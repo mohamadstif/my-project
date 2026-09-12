@@ -1,928 +1,810 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
-  <title>Quran Bot</title>
+<title>Quran Bot</title>
 
-  <!-- Telegram Mini App -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
+<style>
+*{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    background:#f5f5f5;
+    color:#222;
+    font-family:Arial,"Tahoma",sans-serif;
+}
+
+button,input{
+    font-family:inherit;
+}
+
+/* =========================
+   قائمة السور
+========================= */
+
+#surahScreen{
+    display:block;
+    min-height:100vh;
+    padding:20px 12px 30px;
+    background:#f7f7f7;
+}
+
+.title{
+    text-align:center;
+    font-size:25px;
+    font-weight:bold;
+    margin:5px 0 7px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#777;
+    font-size:14px;
+    margin-bottom:18px;
+}
+
+.search{
+    width:100%;
+    height:48px;
+    border:1px solid #ddd;
+    border-radius:14px;
+    background:white;
+    padding:0 15px;
+    font-size:16px;
+    outline:none;
+    margin-bottom:14px;
+}
+
+.surahs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+}
+
+.surah{
+    min-height:66px;
+    background:white;
+    border:1px solid #e2e2e2;
+    border-radius:14px;
+    padding:9px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    text-align:right;
+}
+
+.surah:active{
+    transform:scale(.97);
+}
+
+.number{
+    width:36px;
+    height:36px;
+    min-width:36px;
+    border-radius:50%;
+    background:#eeeeee;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+}
+
+.info{
+    flex:1;
+}
+
+.name{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.details{
+    font-size:11px;
+    color:#888;
+    margin-top:4px;
+}
+
+/* =========================
+   قارئ المصحف
+========================= */
+
+#reader{
+    display:none;
+    min-height:100vh;
+    background:#eeeae2;
+}
+
+.readerTop{
+    position:sticky;
+    top:0;
+    z-index:10;
+    background:#fff;
+    border-bottom:1px solid #ddd;
+    padding:10px;
+}
+
+.topRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+}
+
+.back{
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    background:#f1f1f1;
+    font-size:25px;
+}
+
+.pageControl{
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+#pageInput{
+    width:55px;
+    height:42px;
+    border:1px solid #ccc;
+    border-radius:11px;
+    background:white;
+    text-align:center;
+    font-size:17px;
+    outline:none;
+}
+
+.total{
+    color:#777;
+    font-size:13px;
+}
+
+.zoom{
+    display:flex;
+    gap:6px;
+}
+
+.zoom button{
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    background:#f1f1f1;
+    font-size:24px;
+    font-weight:bold;
+}
+
+.surahTitle{
+    text-align:center;
+    font-size:20px;
+    font-weight:bold;
+    margin-top:9px;
+}
+
+.pageArea{
+    padding:12px 8px 20px;
+    display:flex;
+    justify-content:center;
+    overflow:auto;
+}
+
+.pageBox{
+    width:100%;
+    max-width:720px;
+    transform-origin:top center;
+}
+
+#quranPage{
+    width:100%;
+    height:auto;
+    display:block;
+    background:white;
+    box-shadow:0 2px 12px rgba(0,0,0,.15);
+}
+
+.loading{
+    text-align:center;
+    padding:40px;
+    color:#777;
+}
+
+.error{
+    display:none;
+    text-align:center;
+    padding:40px;
+    color:#a00;
+}
+
+.navigation{
+    display:flex;
+    gap:10px;
+    padding:0 12px 20px;
+    justify-content:center;
+}
+
+.navigation button{
+    flex:1;
+    max-width:180px;
+    height:48px;
+    border:0;
+    border-radius:13px;
+    background:#fff;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.navigation button:disabled{
+    opacity:.35;
+}
+
+/* على الهاتف */
+@media(max-width:380px){
+    .surahs{
+        grid-template-columns:1fr;
     }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      min-height: 100%;
-      background: #f5f1e8;
-      color: #222;
-      font-family: "Arial", sans-serif;
-    }
-
-    body {
-      overflow-x: hidden;
-    }
-
-    button {
-      font-family: inherit;
-      border: 0;
-      cursor: pointer;
-    }
-
-    /* =========================
-       شاشة اختيار السور
-       ========================= */
-
-    #surahScreen {
-      min-height: 100vh;
-      padding: 18px 14px 30px;
-    }
-
-    .app-title {
-      text-align: center;
-      font-size: 25px;
-      font-weight: 700;
-      margin: 8px 0 5px;
-    }
-
-    .app-subtitle {
-      text-align: center;
-      color: #777;
-      font-size: 14px;
-      margin-bottom: 18px;
-    }
-
-    .search-box {
-      width: 100%;
-      height: 48px;
-      border-radius: 14px;
-      border: 1px solid #ddd;
-      background: white;
-      padding: 0 15px;
-      font-size: 16px;
-      outline: none;
-      margin-bottom: 14px;
-      direction: rtl;
-    }
-
-    .surah-list {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
-    }
-
-    .surah-button {
-      background: white;
-      border: 1px solid #e4e0d7;
-      border-radius: 14px;
-      min-height: 65px;
-      padding: 9px 11px;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      text-align: right;
-      transition: transform 0.12s;
-    }
-
-    .surah-button:active {
-      transform: scale(0.97);
-    }
-
-    .surah-number {
-      width: 35px;
-      height: 35px;
-      min-width: 35px;
-      border-radius: 50%;
-      background: #eee8dc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      color: #555;
-    }
-
-    .surah-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .surah-name {
-      font-size: 17px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .surah-details {
-      font-size: 11px;
-      color: #888;
-      margin-top: 4px;
-    }
-
-    /* =========================
-       شاشة المصحف
-       ========================= */
-
-    #quranScreen {
-      display: none;
-      min-height: 100vh;
-      background: #e9e4d8;
-      padding-bottom: 18px;
-    }
-
-    .reader-header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: rgba(245, 241, 232, 0.96);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid #d8d1c4;
-      padding: 10px 12px;
-    }
-
-    .reader-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .back-button {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: #fff;
-      font-size: 22px;
-    }
-
-    .page-box {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      direction: ltr;
-    }
-
-    #pageInput {
-      width: 54px;
-      height: 40px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      background: white;
-      text-align: center;
-      font-size: 17px;
-      outline: none;
-    }
-
-    .page-total {
-      color: #777;
-      font-size: 13px;
-    }
-
-    .zoom-controls {
-      display: flex;
-      gap: 6px;
-    }
-
-    .zoom-button {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: white;
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .surah-title {
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 9px;
-    }
-
-    .reader-content {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      padding: 12px 8px;
-    }
-
-    .page-wrapper {
-      width: 100%;
-      max-width: 720px;
-      transform-origin: top center;
-      transition: transform 0.15s ease;
-    }
-
-    #quranPage {
-      display: block;
-      width: 100%;
-      height: auto;
-      background: #fff;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-      border-radius: 2px;
-    }
-
-    .reader-bottom {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      padding: 0 12px 8px;
-    }
-
-    .nav-button {
-      flex: 1;
-      max-width: 180px;
-      height: 48px;
-      border-radius: 13px;
-      background: white;
-      font-size: 15px;
-      font-weight: bold;
-    }
-
-    .nav-button:disabled {
-      opacity: 0.35;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 35px 10px;
-      color: #777;
-      font-size: 15px;
-    }
-
-    .error {
-      text-align: center;
-      padding: 35px 15px;
-      color: #a33;
-      display: none;
-    }
-
-    @media (max-width: 380px) {
-      .surah-list {
-        grid-template-columns: 1fr;
-      }
-
-      .surah-name {
-        font-size: 16px;
-      }
-    }
-  </style>
+}
+</style>
 </head>
 
 <body>
 
-  <!-- =====================================
-       الشاشة الأولى:
-       قائمة السور الـ114
-       ===================================== -->
+<!-- =================================================
+     هذه أول شاشة تظهر عند فتح التطبيق المصغر
+     ================================================= -->
 
-  <section id="surahScreen">
+<div id="surahScreen">
 
-    <div class="app-title">
-      📖 القرآن الكريم
+    <div class="title">
+        📖 القرآن الكريم
     </div>
 
-    <div class="app-subtitle">
-      اختر السورة التي تريد قراءتها
+    <div class="subtitle">
+        اختر السورة التي تريد قراءتها
     </div>
 
     <input
-      id="searchInput"
-      class="search-box"
-      type="search"
-      placeholder="🔎 ابحث عن سورة..."
-      autocomplete="off"
+        id="search"
+        class="search"
+        type="search"
+        placeholder="🔎 ابحث عن السورة"
     >
 
-    <div id="surahList" class="surah-list"></div>
+    <div id="surahs" class="surahs"></div>
 
-  </section>
+</div>
 
 
-  <!-- =====================================
-       الشاشة الثانية:
-       قارئ المصحف
-       ===================================== -->
+<!-- =================================================
+     هذه الشاشة لا تظهر إلا بعد اختيار سورة
+     ================================================= -->
 
-  <section id="quranScreen">
+<div id="reader">
 
-    <div class="reader-header">
+    <div class="readerTop">
 
-      <div class="reader-top">
+        <div class="topRow">
 
-        <button
-          id="backButton"
-          class="back-button"
-          type="button"
-          aria-label="العودة"
-        >
-          ‹
+            <button id="back" class="back">
+                ‹
+            </button>
+
+            <div class="pageControl">
+
+                <input
+                    id="pageInput"
+                    type="number"
+                    min="1"
+                    max="604"
+                    value="1"
+                >
+
+                <span class="total">
+                    من 604
+                </span>
+
+            </div>
+
+            <!-- التكبير والتصغير -->
+            <div class="zoom">
+
+                <button id="zoomOut">
+                    −
+                </button>
+
+                <button id="zoomIn">
+                    +
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="surahTitle" class="surahTitle">
+            سورة الفاتحة
+        </div>
+
+    </div>
+
+
+    <div class="pageArea">
+
+        <div id="pageBox" class="pageBox">
+
+            <div id="loading" class="loading">
+                جاري تحميل صفحة المصحف...
+            </div>
+
+            <img
+                id="quranPage"
+                style="display:none"
+                alt="صفحة القرآن"
+            >
+
+            <div id="error" class="error">
+                حدث خطأ في تحميل الصفحة.
+                <br>
+                حاول مرة أخرى.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="navigation">
+
+        <button id="prev">
+            ‹ السابقة
         </button>
 
-        <div class="page-box">
-
-          <input
-            id="pageInput"
-            type="number"
-            min="1"
-            max="604"
-            value="1"
-          >
-
-          <span class="page-total">
-            / 604
-          </span>
-
-        </div>
-
-        <div class="zoom-controls">
-
-          <button
-            id="zoomOut"
-            class="zoom-button"
-            type="button"
-          >
-            −
-          </button>
-
-          <button
-            id="zoomIn"
-            class="zoom-button"
-            type="button"
-          >
-            +
-          </button>
-
-        </div>
-
-      </div>
-
-      <div id="surahTitle" class="surah-title">
-        سورة الفاتحة
-      </div>
+        <button id="next">
+            التالية ›
+        </button>
 
     </div>
 
-
-    <div class="reader-content">
-
-      <div id="pageWrapper" class="page-wrapper">
-
-        <div id="loading" class="loading">
-          جاري تحميل صفحة المصحف...
-        </div>
-
-        <img
-          id="quranPage"
-          alt="صفحة القرآن"
-          style="display:none;"
-        >
-
-        <div id="error" class="error">
-          حدث خطأ في تحميل الصفحة.
-          <br>
-          حاول مرة أخرى.
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <div class="reader-bottom">
-
-      <button
-        id="prevButton"
-        class="nav-button"
-        type="button"
-      >
-        ‹ السابقة
-      </button>
-
-      <button
-        id="nextButton"
-        class="nav-button"
-        type="button"
-      >
-        التالية ›
-      </button>
-
-    </div>
-
-  </section>
+</div>
 
 
 <script>
 
-  /* ==========================================
-     Telegram
-     ========================================== */
+/* =================================================
+   Telegram
+================================================= */
 
-  const tg = window.Telegram?.WebApp;
+const tg = window.Telegram?.WebApp;
 
-  if (tg) {
+if(tg){
     tg.ready();
     tg.expand();
 
-    if (tg.setHeaderColor) {
-      tg.setHeaderColor("#f5f1e8");
+    if(tg.setHeaderColor){
+        tg.setHeaderColor("#202d3a");
     }
 
-    if (tg.setBackgroundColor) {
-      tg.setBackgroundColor("#e9e4d8");
+    if(tg.setBackgroundColor){
+        tg.setBackgroundColor("#f5f5f5");
     }
-  }
+}
 
 
-  /* ==========================================
-     السور الـ114
-     
-     startPage = أول صفحة للسورة
-     في مصحف المدينة 604 صفحة.
-     ========================================== */
+/* =================================================
+   السور الـ114
+================================================= */
 
-  const surahs = [
-
-    {id:1, name:"الفاتحة", startPage:1, type:"مكية", ayahs:7},
-    {id:2, name:"البقرة", startPage:2, type:"مدنية", ayahs:286},
-    {id:3, name:"آل عمران", startPage:50, type:"مدنية", ayahs:200},
-    {id:4, name:"النساء", startPage:77, type:"مدنية", ayahs:176},
-    {id:5, name:"المائدة", startPage:106, type:"مدنية", ayahs:120},
-    {id:6, name:"الأنعام", startPage:128, type:"مكية", ayahs:165},
-    {id:7, name:"الأعراف", startPage:151, type:"مكية", ayahs:206},
-    {id:8, name:"الأنفال", startPage:177, type:"مدنية", ayahs:75},
-    {id:9, name:"التوبة", startPage:187, type:"مدنية", ayahs:129},
-    {id:10, name:"يونس", startPage:208, type:"مكية", ayahs:109},
-    {id:11, name:"هود", startPage:221, type:"مكية", ayahs:123},
-    {id:12, name:"يوسف", startPage:235, type:"مكية", ayahs:111},
-    {id:13, name:"الرعد", startPage:249, type:"مدنية", ayahs:43},
-    {id:14, name:"إبراهيم", startPage:255, type:"مكية", ayahs:52},
-    {id:15, name:"الحجر", startPage:262, type:"مكية", ayahs:99},
-    {id:16, name:"النحل", startPage:267, type:"مكية", ayahs:128},
-    {id:17, name:"الإسراء", startPage:282, type:"مكية", ayahs:111},
-    {id:18, name:"الكهف", startPage:293, type:"مكية", ayahs:110},
-    {id:19, name:"مريم", startPage:305, type:"مكية", ayahs:98},
-    {id:20, name:"طه", startPage:312, type:"مكية", ayahs:135},
-    {id:21, name:"الأنبياء", startPage:322, type:"مكية", ayahs:112},
-    {id:22, name:"الحج", startPage:332, type:"مدنية", ayahs:78},
-    {id:23, name:"المؤمنون", startPage:342, type:"مكية", ayahs:118},
-    {id:24, name:"النور", startPage:350, type:"مدنية", ayahs:64},
-    {id:25, name:"الفرقان", startPage:359, type:"مكية", ayahs:77},
-    {id:26, name:"الشعراء", startPage:367, type:"مكية", ayahs:227},
-    {id:27, name:"النمل", startPage:377, type:"مكية", ayahs:93},
-    {id:28, name:"القصص", startPage:385, type:"مكية", ayahs:88},
-    {id:29, name:"العنكبوت", startPage:396, type:"مكية", ayahs:69},
-    {id:30, name:"الروم", startPage:404, type:"مكية", ayahs:60},
-    {id:31, name:"لقمان", startPage:411, type:"مكية", ayahs:34},
-    {id:32, name:"السجدة", startPage:415, type:"مكية", ayahs:30},
-    {id:33, name:"الأحزاب", startPage:418, type:"مدنية", ayahs:73},
-    {id:34, name:"سبأ", startPage:428, type:"مكية", ayahs:54},
-    {id:35, name:"فاطر", startPage:434, type:"مكية", ayahs:45},
-    {id:36, name:"يس", startPage:440, type:"مكية", ayahs:83},
-    {id:37, name:"الصافات", startPage:446, type:"مكية", ayahs:182},
-    {id:38, name:"ص", startPage:453, type:"مكية", ayahs:88},
-    {id:39, name:"الزمر", startPage:458, type:"مكية", ayahs:75},
-    {id:40, name:"غافر", startPage:467, type:"مكية", ayahs:85},
-    {id:41, name:"فصلت", startPage:477, type:"مكية", ayahs:54},
-    {id:42, name:"الشورى", startPage:483, type:"مكية", ayahs:53},
-    {id:43, name:"الزخرف", startPage:489, type:"مكية", ayahs:89},
-    {id:44, name:"الدخان", startPage:496, type:"مكية", ayahs:59},
-    {id:45, name:"الجاثية", startPage:499, type:"مكية", ayahs:37},
-    {id:46, name:"الأحقاف", startPage:502, type:"مكية", ayahs:35},
-    {id:47, name:"محمد", startPage:507, type:"مدنية", ayahs:38},
-    {id:48, name:"الفتح", startPage:511, type:"مدنية", ayahs:29},
-    {id:49, name:"الحجرات", startPage:515, type:"مدنية", ayahs:18},
-    {id:50, name:"ق", startPage:518, type:"مكية", ayahs:45},
-    {id:51, name:"الذاريات", startPage:520, type:"مكية", ayahs:60},
-    {id:52, name:"الطور", startPage:523, type:"مكية", ayahs:49},
-    {id:53, name:"النجم", startPage:526, type:"مكية", ayahs:62},
-    {id:54, name:"القمر", startPage:528, type:"مكية", ayahs:55},
-    {id:55, name:"الرحمن", startPage:531, type:"مدنية", ayahs:78},
-    {id:56, name:"الواقعة", startPage:534, type:"مكية", ayahs:96},
-    {id:57, name:"الحديد", startPage:537, type:"مدنية", ayahs:29},
-    {id:58, name:"المجادلة", startPage:542, type:"مدنية", ayahs:22},
-    {id:59, name:"الحشر", startPage:545, type:"مدنية", ayahs:24},
-    {id:60, name:"الممتحنة", startPage:549, type:"مدنية", ayahs:13},
-    {id:61, name:"الصف", startPage:551, type:"مدنية", ayahs:14},
-    {id:62, name:"الجمعة", startPage:553, type:"مدنية", ayahs:11},
-    {id:63, name:"المنافقون", startPage:554, type:"مدنية", ayahs:11},
-    {id:64, name:"التغابن", startPage:556, type:"مدنية", ayahs:18},
-    {id:65, name:"الطلاق", startPage:558, type:"مدنية", ayahs:12},
-    {id:66, name:"التحريم", startPage:560, type:"مدنية", ayahs:12},
-    {id:67, name:"الملك", startPage:562, type:"مكية", ayahs:30},
-    {id:68, name:"القلم", startPage:564, type:"مكية", ayahs:52},
-    {id:69, name:"الحاقة", startPage:566, type:"مكية", ayahs:52},
-    {id:70, name:"المعارج", startPage:568, type:"مكية", ayahs:44},
-    {id:71, name:"نوح", startPage:570, type:"مكية", ayahs:28},
-    {id:72, name:"الجن", startPage:572, type:"مكية", ayahs:28},
-    {id:73, name:"المزمل", startPage:574, type:"مكية", ayahs:20},
-    {id:74, name:"المدثر", startPage:575, type:"مكية", ayahs:56},
-    {id:75, name:"القيامة", startPage:577, type:"مكية", ayahs:40},
-    {id:76, name:"الإنسان", startPage:578, type:"مدنية", ayahs:31},
-    {id:77, name:"المرسلات", startPage:580, type:"مكية", ayahs:50},
-    {id:78, name:"النبأ", startPage:582, type:"مكية", ayahs:40},
-    {id:79, name:"النازعات", startPage:583, type:"مكية", ayahs:46},
-    {id:80, name:"عبس", startPage:585, type:"مكية", ayahs:42},
-    {id:81, name:"التكوير", startPage:586, type:"مكية", ayahs:29},
-    {id:82, name:"الانفطار", startPage:587, type:"مكية", ayahs:19},
-    {id:83, name:"المطففين", startPage:587, type:"مكية", ayahs:36},
-    {id:84, name:"الانشقاق", startPage:589, type:"مكية", ayahs:25},
-    {id:85, name:"البروج", startPage:590, type:"مكية", ayahs:22},
-    {id:86, name:"الطارق", startPage:591, type:"مكية", ayahs:17},
-    {id:87, name:"الأعلى", startPage:591, type:"مكية", ayahs:19},
-    {id:88, name:"الغاشية", startPage:592, type:"مكية", ayahs:26},
-    {id:89, name:"الفجر", startPage:593, type:"مكية", ayahs:30},
-    {id:90, name:"البلد", startPage:594, type:"مكية", ayahs:20},
-    {id:91, name:"الشمس", startPage:595, type:"مكية", ayahs:15},
-    {id:92, name:"الليل", startPage:595, type:"مكية", ayahs:21},
-    {id:93, name:"الضحى", startPage:596, type:"مكية", ayahs:11},
-    {id:94, name:"الشرح", startPage:596, type:"مكية", ayahs:8},
-    {id:95, name:"التين", startPage:597, type:"مكية", ayahs:8},
-    {id:96, name:"العلق", startPage:597, type:"مكية", ayahs:19},
-    {id:97, name:"القدر", startPage:598, type:"مكية", ayahs:5},
-    {id:98, name:"البينة", startPage:598, type:"مدنية", ayahs:8},
-    {id:99, name:"الزلزلة", startPage:599, type:"مدنية", ayahs:8},
-    {id:100, name:"العاديات", startPage:599, type:"مكية", ayahs:11},
-    {id:101, name:"القارعة", startPage:600, type:"مكية", ayahs:11},
-    {id:102, name:"التكاثر", startPage:600, type:"مكية", ayahs:8},
-    {id:103, name:"العصر", startPage:601, type:"مكية", ayahs:3},
-    {id:104, name:"الهمزة", startPage:601, type:"مكية", ayahs:9},
-    {id:105, name:"الفيل", startPage:601, type:"مكية", ayahs:5},
-    {id:106, name:"قريش", startPage:602, type:"مكية", ayahs:4},
-    {id:107, name:"الماعون", startPage:602, type:"مكية", ayahs:7},
-    {id:108, name:"الكوثر", startPage:602, type:"مكية", ayahs:3},
-    {id:109, name:"الكافرون", startPage:603, type:"مكية", ayahs:6},
-    {id:110, name:"النصر", startPage:603, type:"مدنية", ayahs:3},
-    {id:111, name:"المسد", startPage:603, type:"مكية", ayahs:5},
-    {id:112, name:"الإخلاص", startPage:604, type:"مكية", ayahs:4},
-    {id:113, name:"الفلق", startPage:604, type:"مكية", ayahs:5},
-    {id:114, name:"الناس", startPage:604, type:"مكية", ayahs:6}
-
-  ];
+const surahs = [
+[1,"الفاتحة",1,"مكية",7],
+[2,"البقرة",2,"مدنية",286],
+[3,"آل عمران",50,"مدنية",200],
+[4,"النساء",77,"مدنية",176],
+[5,"المائدة",106,"مدنية",120],
+[6,"الأنعام",128,"مكية",165],
+[7,"الأعراف",151,"مكية",206],
+[8,"الأنفال",177,"مدنية",75],
+[9,"التوبة",187,"مدنية",129],
+[10,"يونس",208,"مكية",109],
+[11,"هود",221,"مكية",123],
+[12,"يوسف",235,"مكية",111],
+[13,"الرعد",249,"مدنية",43],
+[14,"إبراهيم",255,"مكية",52],
+[15,"الحجر",262,"مكية",99],
+[16,"النحل",267,"مكية",128],
+[17,"الإسراء",282,"مكية",111],
+[18,"الكهف",293,"مكية",110],
+[19,"مريم",305,"مكية",98],
+[20,"طه",312,"مكية",135],
+[21,"الأنبياء",322,"مكية",112],
+[22,"الحج",332,"مدنية",78],
+[23,"المؤمنون",342,"مكية",118],
+[24,"النور",350,"مدنية",64],
+[25,"الفرقان",359,"مكية",77],
+[26,"الشعراء",367,"مكية",227],
+[27,"النمل",377,"مكية",93],
+[28,"القصص",385,"مكية",88],
+[29,"العنكبوت",396,"مكية",69],
+[30,"الروم",404,"مكية",60],
+[31,"لقمان",411,"مكية",34],
+[32,"السجدة",415,"مكية",30],
+[33,"الأحزاب",418,"مدنية",73],
+[34,"سبأ",428,"مكية",54],
+[35,"فاطر",434,"مكية",45],
+[36,"يس",440,"مكية",83],
+[37,"الصافات",446,"مكية",182],
+[38,"ص",453,"مكية",88],
+[39,"الزمر",458,"مكية",75],
+[40,"غافر",467,"مكية",85],
+[41,"فصلت",477,"مكية",54],
+[42,"الشورى",483,"مكية",53],
+[43,"الزخرف",489,"مكية",89],
+[44,"الدخان",496,"مكية",59],
+[45,"الجاثية",499,"مكية",37],
+[46,"الأحقاف",502,"مكية",35],
+[47,"محمد",507,"مدنية",38],
+[48,"الفتح",511,"مدنية",29],
+[49,"الحجرات",515,"مدنية",18],
+[50,"ق",518,"مكية",45],
+[51,"الذاريات",520,"مكية",60],
+[52,"الطور",523,"مكية",49],
+[53,"النجم",526,"مكية",62],
+[54,"القمر",528,"مكية",55],
+[55,"الرحمن",531,"مدنية",78],
+[56,"الواقعة",534,"مكية",96],
+[57,"الحديد",537,"مدنية",29],
+[58,"المجادلة",542,"مدنية",22],
+[59,"الحشر",545,"مدنية",24],
+[60,"الممتحنة",549,"مدنية",13],
+[61,"الصف",551,"مدنية",14],
+[62,"الجمعة",553,"مدنية",11],
+[63,"المنافقون",554,"مدنية",11],
+[64,"التغابن",556,"مدنية",18],
+[65,"الطلاق",558,"مدنية",12],
+[66,"التحريم",560,"مدنية",12],
+[67,"الملك",562,"مكية",30],
+[68,"القلم",564,"مكية",52],
+[69,"الحاقة",566,"مكية",52],
+[70,"المعارج",568,"مكية",44],
+[71,"نوح",570,"مكية",28],
+[72,"الجن",572,"مكية",28],
+[73,"المزمل",574,"مكية",20],
+[74,"المدثر",575,"مكية",56],
+[75,"القيامة",577,"مكية",40],
+[76,"الإنسان",578,"مدنية",31],
+[77,"المرسلات",580,"مكية",50],
+[78,"النبأ",582,"مكية",40],
+[79,"النازعات",583,"مكية",46],
+[80,"عبس",585,"مكية",42],
+[81,"التكوير",586,"مكية",29],
+[82,"الانفطار",587,"مكية",19],
+[83,"المطففين",587,"مكية",36],
+[84,"الانشقاق",589,"مكية",25],
+[85,"البروج",590,"مكية",22],
+[86,"الطارق",591,"مكية",17],
+[87,"الأعلى",591,"مكية",19],
+[88,"الغاشية",592,"مكية",26],
+[89,"الفجر",593,"مكية",30],
+[90,"البلد",594,"مكية",20],
+[91,"الشمس",595,"مكية",15],
+[92,"الليل",595,"مكية",21],
+[93,"الضحى",596,"مكية",11],
+[94,"الشرح",596,"مكية",8],
+[95,"التين",597,"مكية",8],
+[96,"العلق",597,"مكية",19],
+[97,"القدر",598,"مكية",5],
+[98,"البينة",598,"مدنية",8],
+[99,"الزلزلة",599,"مدنية",8],
+[100,"العاديات",599,"مكية",11],
+[101,"القارعة",600,"مكية",11],
+[102,"التكاثر",600,"مكية",8],
+[103,"العصر",601,"مكية",3],
+[104,"الهمزة",601,"مكية",9],
+[105,"الفيل",601,"مكية",5],
+[106,"قريش",602,"مكية",4],
+[107,"الماعون",602,"مكية",7],
+[108,"الكوثر",602,"مكية",3],
+[109,"الكافرون",603,"مكية",6],
+[110,"النصر",603,"مدنية",3],
+[111,"المسد",603,"مكية",5],
+[112,"الإخلاص",604,"مكية",4],
+[113,"الفلق",604,"مكية",5],
+[114,"الناس",604,"مكية",6]
+];
 
 
-  /* ==========================================
-     عناصر الصفحة
-     ========================================== */
+/* =================================================
+   عناصر الصفحة
+================================================= */
 
-  const surahScreen = document.getElementById("surahScreen");
-  const quranScreen = document.getElementById("quranScreen");
+const surahScreen = document.getElementById("surahScreen");
+const reader = document.getElementById("reader");
+const surahsBox = document.getElementById("surahs");
+const search = document.getElementById("search");
 
-  const surahList = document.getElementById("surahList");
-  const searchInput = document.getElementById("searchInput");
+const surahTitle = document.getElementById("surahTitle");
+const quranPage = document.getElementById("quranPage");
+const loading = document.getElementById("loading");
+const error = document.getElementById("error");
 
-  const surahTitle = document.getElementById("surahTitle");
+const pageBox = document.getElementById("pageBox");
+const pageInput = document.getElementById("pageInput");
 
-  const pageInput = document.getElementById("pageInput");
-  const quranPage = document.getElementById("quranPage");
+const prev = document.getElementById("prev");
+const next = document.getElementById("next");
 
-  const loading = document.getElementById("loading");
-  const error = document.getElementById("error");
+const back = document.getElementById("back");
 
-  const pageWrapper = document.getElementById("pageWrapper");
-
-  const prevButton = document.getElementById("prevButton");
-  const nextButton = document.getElementById("nextButton");
-
-  const backButton = document.getElementById("backButton");
-
-  const zoomIn = document.getElementById("zoomIn");
-  const zoomOut = document.getElementById("zoomOut");
+const zoomIn = document.getElementById("zoomIn");
+const zoomOut = document.getElementById("zoomOut");
 
 
-  /* ==========================================
-     الحالة الحالية
-     ========================================== */
+/* =================================================
+   الحالة
+================================================= */
 
-  let currentPage = 1;
-  let currentSurah = null;
+let currentPage = 1;
+let currentSurah = null;
+let scale = 1;
 
-  let zoom = 1;
 
+/* =================================================
+   إنشاء قائمة السور
+================================================= */
 
-  /* ==========================================
-     إنشاء قائمة السور
-     ========================================== */
+function showSurahs(list){
 
-  function renderSurahs(list = surahs) {
-
-    surahList.innerHTML = "";
+    surahsBox.innerHTML = "";
 
     list.forEach(surah => {
 
-      const button = document.createElement("button");
+        const id = surah[0];
+        const name = surah[1];
+        const startPage = surah[2];
+        const type = surah[3];
+        const ayahs = surah[4];
 
-      button.className = "surah-button";
-      button.type = "button";
+        const button = document.createElement("button");
 
-      button.innerHTML = `
-        <div class="surah-number">
-          ${surah.id}
-        </div>
+        button.className = "surah";
 
-        <div class="surah-info">
+        button.innerHTML = `
+            <div class="number">${id}</div>
 
-          <div class="surah-name">
-            ${surah.name}
-          </div>
+            <div class="info">
+                <div class="name">${name}</div>
+                <div class="details">
+                    ${type} · ${ayahs} آية
+                </div>
+            </div>
+        `;
 
-          <div class="surah-details">
-            ${surah.type} · ${surah.ayahs} آية
-          </div>
+        button.onclick = () => {
+            openSurah(surah);
+        };
 
-        </div>
-      `;
-
-      button.addEventListener("click", () => {
-        openSurah(surah);
-      });
-
-      surahList.appendChild(button);
+        surahsBox.appendChild(button);
 
     });
-  }
+}
 
 
-  /* ==========================================
-     البحث عن السورة
-     ========================================== */
+/* =================================================
+   فتح السورة
+================================================= */
 
-  searchInput.addEventListener("input", () => {
-
-    const value = searchInput.value.trim();
-
-    if (!value) {
-      renderSurahs();
-      return;
-    }
-
-    const filtered = surahs.filter(surah =>
-      surah.name.includes(value) ||
-      String(surah.id).includes(value)
-    );
-
-    renderSurahs(filtered);
-
-  });
-
-
-  /* ==========================================
-     فتح السورة
-     ========================================== */
-
-  function openSurah(surah) {
+function openSurah(surah){
 
     currentSurah = surah;
 
-    currentPage = surah.startPage;
+    currentPage = surah[2];
 
-    zoom = 1;
+    scale = 1;
 
-    pageWrapper.style.transform = "scale(1)";
+    pageBox.style.transform = "scale(1)";
 
     surahScreen.style.display = "none";
-    quranScreen.style.display = "block";
 
-    surahTitle.textContent = "سُورَةُ " + surah.name;
+    reader.style.display = "block";
+
+    surahTitle.textContent =
+        "سُورَةُ " + surah[1];
 
     loadPage(currentPage);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "instant"
-    });
-
-  }
+    window.scrollTo(0,0);
+}
 
 
-  /* ==========================================
-     تحميل صفحة المصحف
-     ========================================== */
+/* =================================================
+   تحميل صفحة القرآن
+================================================= */
 
-  function loadPage(page) {
+function loadPage(page){
 
-    if (page < 1) page = 1;
-    if (page > 604) page = 604;
+    page = Math.max(1,Math.min(604,page));
 
     currentPage = page;
 
     pageInput.value = page;
 
     loading.style.display = "block";
+
     quranPage.style.display = "none";
+
     error.style.display = "none";
 
-    /*
-      مصدر صفحات مصحف المدينة:
-
-      604 صفحة.
-      SVG.
-      Uthmani.
-      عرض 720.
-    */
 
     const url =
-      "https://api.islamic.app/v1/mushaf/page/" +
-      page +
-      ".svg?font=uthmani&theme=light&width=720";
+        "https://api.islamic.app/v1/mushaf/page/" +
+        page +
+        ".svg?font=uthmani&theme=light&width=720";
 
-    quranPage.onload = () => {
 
-      loading.style.display = "none";
+    quranPage.onload = function(){
 
-      quranPage.style.display = "block";
+        loading.style.display = "none";
 
-      updateButtons();
+        quranPage.style.display = "block";
+
+        updateButtons();
+
+    };
+
+
+    quranPage.onerror = function(){
+
+        loading.style.display = "none";
+
+        quranPage.style.display = "none";
+
+        error.style.display = "block";
 
     };
 
-    quranPage.onerror = () => {
-
-      loading.style.display = "none";
-
-      quranPage.style.display = "none";
-
-      error.style.display = "block";
-
-    };
 
     quranPage.src = url;
 
     updateButtons();
-
-  }
-
-
-  /* ==========================================
-     أزرار السابق / التالي
-     ========================================== */
-
-  function updateButtons() {
-
-    prevButton.disabled = currentPage <= 1;
-    nextButton.disabled = currentPage >= 604;
-
-  }
+}
 
 
-  prevButton.addEventListener("click", () => {
+/* =================================================
+   أزرار الصفحات
+================================================= */
 
-    if (currentPage > 1) {
-      loadPage(currentPage - 1);
+function updateButtons(){
+
+    prev.disabled = currentPage <= 1;
+
+    next.disabled = currentPage >= 604;
+}
+
+
+prev.onclick = function(){
+
+    if(currentPage > 1){
+        loadPage(currentPage - 1);
     }
+};
 
-  });
 
+next.onclick = function(){
 
-  nextButton.addEventListener("click", () => {
-
-    if (currentPage < 604) {
-      loadPage(currentPage + 1);
+    if(currentPage < 604){
+        loadPage(currentPage + 1);
     }
+};
 
-  });
 
+/* =================================================
+   رقم الصفحة
+================================================= */
 
-  /* ==========================================
-     الانتقال إلى رقم صفحة
-     ========================================== */
+pageInput.onchange = function(){
 
-  pageInput.addEventListener("change", () => {
+    let page = parseInt(pageInput.value);
 
-    let page = parseInt(pageInput.value, 10);
-
-    if (isNaN(page)) {
-      page = currentPage;
+    if(isNaN(page)){
+        page = currentPage;
     }
-
-    page = Math.max(1, Math.min(604, page));
 
     loadPage(page);
+};
 
-  });
 
+/* =================================================
+   التكبير
+================================================= */
 
-  pageInput.addEventListener("keydown", event => {
+zoomIn.onclick = function(){
 
-    if (event.key === "Enter") {
-      pageInput.blur();
+    scale += 0.1;
+
+    if(scale > 2){
+        scale = 2;
     }
 
-  });
+    pageBox.style.transform =
+        "scale(" + scale + ")";
+};
 
 
-  /* ==========================================
-     التكبير والتصغير
-     ========================================== */
+/* =================================================
+   التصغير
+================================================= */
 
-  zoomIn.addEventListener("click", () => {
+zoomOut.onclick = function(){
 
-    zoom += 0.1;
+    scale -= 0.1;
 
-    if (zoom > 2) {
-      zoom = 2;
+    if(scale < 0.7){
+        scale = 0.7;
     }
 
-    pageWrapper.style.transform =
-      `scale(${zoom})`;
-
-  });
-
-
-  zoomOut.addEventListener("click", () => {
-
-    zoom -= 0.1;
-
-    if (zoom < 0.7) {
-      zoom = 0.7;
-    }
-
-    pageWrapper.style.transform =
-      `scale(${zoom})`;
-
-  });
+    pageBox.style.transform =
+        "scale(" + scale + ")";
+};
 
 
-  /* ==========================================
-     العودة لقائمة السور
-     ========================================== */
+/* =================================================
+   العودة إلى قائمة السور
+================================================= */
 
-  backButton.addEventListener("click", () => {
+back.onclick = function(){
 
-    quranScreen.style.display = "none";
+    reader.style.display = "none";
+
     surahScreen.style.display = "block";
 
-    window.scrollTo({
-      top: 0,
-      behavior: "instant"
-    });
-
-  });
+    window.scrollTo(0,0);
+};
 
 
-  /* ==========================================
-     السحب يمين / يسار للتنقل
-     ========================================== */
+/* =================================================
+   البحث
+================================================= */
 
-  let touchStartX = 0;
-  let touchEndX = 0;
+search.oninput = function(){
 
-  quranScreen.addEventListener("touchstart", event => {
+    const value = search.value.trim();
 
-    touchStartX = event.changedTouches[0].screenX;
-
-  }, {passive: true});
-
-
-  quranScreen.addEventListener("touchend", event => {
-
-    touchEndX = event.changedTouches[0].screenX;
-
-    const distance = touchEndX - touchStartX;
-
-    if (Math.abs(distance) < 70) {
-      return;
+    if(!value){
+        showSurahs(surahs);
+        return;
     }
 
-    /*
-      RTL:
-      السحب من اليمين إلى اليسار = الصفحة التالية
-      السحب من اليسار إلى اليمين = الصفحة السابقة
-    */
+    const result = surahs.filter(surah =>
+        surah[1].includes(value) ||
+        String(surah[0]).includes(value)
+    );
 
-    if (distance < 0) {
-
-      if (currentPage < 604) {
-        loadPage(currentPage + 1);
-      }
-
-    } else {
-
-      if (currentPage > 1) {
-        loadPage(currentPage - 1);
-      }
-
-    }
-
-  }, {passive: true});
+    showSurahs(result);
+};
 
 
-  /* ==========================================
-     تشغيل التطبيق
-     ========================================== */
+/* =================================================
+   تشغيل التطبيق
+================================================= */
 
-  renderSurahs();
+/*
+   مهم جدًا:
+   هنا لا نفتح أي سورة.
+   فقط نعرض قائمة السور.
+
+   لذلك عند ضغط:
+   🔵 التطبيق المصغر
+
+   ستكون أول شاشة هي قائمة السور الـ114.
+*/
+
+showSurahs(surahs);
 
 </script>
 
