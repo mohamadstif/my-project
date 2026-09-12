@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>المصحف الشريف</title>
-    <!-- مكتبة تليجرام للتطبيقات المصغرة -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,6 +24,7 @@
             background-color: #ffffff;
             border-bottom: 1px solid #e5e5e5;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 10;
         }
         .btn {
             background-color: #2481cc;
@@ -89,7 +89,6 @@
     </div>
 
     <script>
-        // تهيئة التطبيق المصغر لملء شاشة تليجرام
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
@@ -99,10 +98,11 @@
 
         function updatePage() {
             document.getElementById('loader').style.display = 'block';
+            document.getElementById('loader').innerText = 'جاري تحميل الصفحة...';
             document.getElementById('quranPage').style.display = 'none';
             
-            // استدعاء صور صفحات المصحف الشريف (من 1 إلى 604)
-            document.getElementById('quranPage').src = `https://quran.ksu.edu.sy/png_big/${currentPage}.png`;
+            // رابط سيرفر عالمي مباشر لصفحات المصحف الشريف
+            document.getElementById('quranPage').src = `https://everyayah.com/data/quranpngs/${currentPage}.png`;
             document.getElementById('pageInput').value = currentPage;
         }
 
@@ -134,10 +134,9 @@
         }
 
         function showError() {
-            document.getElementById('loader').innerText = 'حدث خطأ في تحميل الصفحة. حاول مرة أخرى.';
+            document.getElementById('loader').innerText = 'تعذر تحميل الصفحة، تحقق من الاتصال بالإنترنت.';
         }
 
-        // تشغيل الصفحة الأولى عند الفتح
         updatePage();
     </script>
 </body>
