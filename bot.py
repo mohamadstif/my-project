@@ -14,7 +14,9 @@ from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
+    WebAppInfo,
 )
+
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -37,6 +39,10 @@ TAFSIR_URL = "https://quranenc.com/ar"
 DORAR_URL = "https://dorar.net/hadith/search"
 CHANNEL_URL = "https://t.me/x7oly"
 
+# رابط التطبيق المصغر
+MINI_APP_URL = "https://mohamadstif.github.io/my-project/"
+
+# الحد الأقصى للرفع عبر Bot API العادي
 MAX_AUDIO_BYTES = 50 * 1024 * 1024
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -250,7 +256,10 @@ def normalize_text(text):
 
     text = str(text)
 
-    text = unicodedata.normalize("NFKD", text)
+    text = unicodedata.normalize(
+        "NFKD",
+        text,
+    )
 
     text = "".join(
         ch for ch in text
@@ -266,7 +275,11 @@ def normalize_text(text):
         .replace("ة", "ه")
     )
 
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
 
     return text
 
@@ -298,7 +311,11 @@ def get_sura_id(sura):
     if not isinstance(sura, dict):
         return None
 
-    for key in ("id", "sura_id", "number"):
+    for key in (
+        "id",
+        "sura_id",
+        "number",
+    ):
         value = sura.get(key)
 
         if value is not None:
@@ -369,7 +386,6 @@ def get_moshaf_rewaya_name(moshaf):
         "rewaya",
         "riwaya",
         "rewaya_name",
-        "riwaya_name",
         "name",
     ):
         value = moshaf.get(key)
@@ -456,7 +472,10 @@ def get_reciters():
     if not data:
         return []
 
-    reciters = data.get("reciters", [])
+    reciters = data.get(
+        "reciters",
+        [],
+    )
 
     if not isinstance(reciters, list):
         reciters = []
@@ -478,7 +497,10 @@ def get_suras():
     if not data:
         return []
 
-    suras = data.get("suwar", [])
+    suras = data.get(
+        "suwar",
+        [],
+    )
 
     if not isinstance(suras, list):
         suras = []
@@ -500,7 +522,10 @@ def get_riwayat():
     if not data:
         return []
 
-    riwayat = data.get("riwayat", [])
+    riwayat = data.get(
+        "riwayat",
+        [],
+    )
 
     if not isinstance(riwayat, list):
         riwayat = []
@@ -544,7 +569,9 @@ PREFERRED_RECITERS = [
 def sort_reciters(reciters):
     preferred_map = {
         normalize_text(name): index
-        for index, name in enumerate(PREFERRED_RECITERS)
+        for index, name in enumerate(
+            PREFERRED_RECITERS
+        )
     }
 
     def sort_key(reciter):
@@ -595,7 +622,9 @@ def unique_reciters(reciters):
 # =========================================================
 
 def make_all_reciter_keyboard(reciters):
-    reciters = unique_reciters(reciters)
+    reciters = unique_reciters(
+        reciters
+    )
 
     names = [
         get_name(reciter)
@@ -604,11 +633,22 @@ def make_all_reciter_keyboard(reciters):
 
     rows = []
 
-    for i in range(0, len(names), 2):
-        rows.append(names[i:i + 2])
+    for i in range(
+        0,
+        len(names),
+        2,
+    ):
+        rows.append(
+            names[i:i + 2]
+        )
 
-    rows.append([BTN_BACK, BTN_HOME])
-    rows.append([BTN_HIDE])
+    rows.append(
+        [BTN_BACK, BTN_HOME]
+    )
+
+    rows.append(
+        [BTN_HIDE]
+    )
 
     return ReplyKeyboardMarkup(
         rows,
@@ -640,7 +680,10 @@ WELCOME_TEXT = """
 # القائمة الرئيسية
 # =========================================================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     context.user_data.clear()
 
     await update.message.reply_text(
@@ -649,7 +692,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def show_home(update, context):
+async def show_home(
+    update,
+    context,
+):
     context.user_data.clear()
 
     await update.message.reply_text(
@@ -663,7 +709,10 @@ async def show_home(update, context):
 # إخفاء لوحة الأزرار
 # =========================================================
 
-async def hide_keyboard(update, context):
+async def hide_keyboard(
+    update,
+    context,
+):
     context.user_data.clear()
 
     await update.message.reply_text(
@@ -677,7 +726,10 @@ async def hide_keyboard(update, context):
 # المصحف
 # =========================================================
 
-async def show_quran(update, context):
+async def show_quran(
+    update,
+    context,
+):
     suras = get_suras()
 
     if not suras:
@@ -689,8 +741,6 @@ async def show_quran(update, context):
 
     context.user_data.clear()
 
-    # مهم:
-    # quran = فتح Quran.com
     context.user_data["mode"] = "quran"
     context.user_data["quran_mode"] = True
 
@@ -703,8 +753,14 @@ async def show_quran(update, context):
         if name:
             names.append(name)
 
-    for i in range(0, len(names), 3):
-        rows.append(names[i:i + 3])
+    for i in range(
+        0,
+        len(names),
+        3,
+    ):
+        rows.append(
+            names[i:i + 3]
+        )
 
     await update.message.reply_text(
         "📖 اختر السورة:",
@@ -712,7 +768,15 @@ async def show_quran(update, context):
     )
 
 
-async def open_quran_sura(update, context, sura):
+# =========================================================
+# فتح السورة في التطبيق المصغر
+# =========================================================
+
+async def open_quran_sura(
+    update,
+    context,
+    sura,
+):
     sura_id = get_sura_id(sura)
 
     if not sura_id:
@@ -721,31 +785,28 @@ async def open_quran_sura(update, context, sura):
         )
         return
 
-    slug = QURAN_SLUGS.get(sura_id)
+    sura_name = get_sura_name(sura)
 
-    if not slug:
-        await update.message.reply_text(
-            "⚠️ رابط هذه السورة غير متوفر حاليًا."
-        )
-        return
-
-    # الرابط المطلوب:
-    # الفاتحة = https://quran.com/ar/al-fatihah
-    url = f"{QURAN_SITE}/ar/{slug}"
+    # فتح التطبيق المصغر على نفس السورة
+    mini_app_url = (
+        f"{MINI_APP_URL}?surah={sura_id}"
+    )
 
     keyboard = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
                     "📖 فتح المصحف",
-                    url=url,
+                    web_app=WebAppInfo(
+                        url=mini_app_url
+                    ),
                 )
             ]
         ]
     )
 
     await update.message.reply_text(
-        f"📖 سورة {get_sura_name(sura)}\n\n"
+        f"📖 سورة {sura_name}\n\n"
         "اضغط الزر لفتح السورة في المصحف:",
         reply_markup=keyboard,
     )
@@ -759,6 +820,7 @@ def find_sura_by_name(name):
     target = normalize_text(name)
 
     for sura in get_suras():
+
         if normalize_text(
             get_sura_name(sura)
         ) == target:
@@ -805,7 +867,10 @@ async def show_reciters(
 # اختيار سريع
 # =========================================================
 
-async def show_quick(update, context):
+async def show_quick(
+    update,
+    context,
+):
     context.user_data.clear()
     context.user_data["mode"] = "quick"
     context.user_data["quran_mode"] = False
@@ -843,8 +908,14 @@ async def show_quick(update, context):
 
     rows = []
 
-    for i in range(0, len(letters), 5):
-        rows.append(letters[i:i + 5])
+    for i in range(
+        0,
+        len(letters),
+        5,
+    ):
+        rows.append(
+            letters[i:i + 5]
+        )
 
     await update.message.reply_text(
         "⚡ اختيار سريع\n\n"
@@ -853,7 +924,11 @@ async def show_quick(update, context):
     )
 
 
-async def quick_letter(update, context, letter):
+async def quick_letter(
+    update,
+    context,
+    letter,
+):
     reciters = unique_reciters(
         get_reciters()
     )
@@ -865,6 +940,7 @@ async def quick_letter(update, context, letter):
     matched = []
 
     for reciter in reciters:
+
         name = normalize_text(
             get_name(reciter)
         )
@@ -881,9 +957,15 @@ async def quick_letter(update, context, letter):
         )
         return
 
-    context.user_data["mode"] = "quick_reciter"
+    context.user_data["mode"] = (
+        "quick_reciter"
+    )
+
     context.user_data["quran_mode"] = False
-    context.user_data["reciter_list"] = matched
+
+    context.user_data[
+        "reciter_list"
+    ] = matched
 
     await update.message.reply_text(
         f"⚡ القراء الذين يبدأ اسمهم "
@@ -898,7 +980,10 @@ async def quick_letter(update, context, letter):
 # الاختيار المتقدم
 # =========================================================
 
-async def show_advanced(update, context):
+async def show_advanced(
+    update,
+    context,
+):
     context.user_data.clear()
 
     await show_reciters(
@@ -923,6 +1008,7 @@ def find_reciter_by_name(
         reciters = get_reciters()
 
     for reciter in reciters:
+
         if normalize_text(
             get_name(reciter)
         ) == target:
@@ -945,7 +1031,9 @@ def moshaf_matches_riwaya(
     )
 
     moshaf_name = normalize_text(
-        get_moshaf_rewaya_name(moshaf)
+        get_moshaf_rewaya_name(
+            moshaf
+        )
     )
 
     wanted_name = normalize_text(
@@ -953,7 +1041,10 @@ def moshaf_matches_riwaya(
     )
 
     if selected_id and moshaf_id:
-        if str(moshaf_id) == str(selected_id):
+
+        if str(moshaf_id) == str(
+            selected_id
+        ):
             return True
 
     if wanted_name and moshaf_name:
@@ -974,7 +1065,10 @@ def moshaf_matches_riwaya(
 # الروايات
 # =========================================================
 
-async def show_riwayat(update, context):
+async def show_riwayat(
+    update,
+    context,
+):
     riwayat = get_riwayat()
 
     if not riwayat:
@@ -985,12 +1079,14 @@ async def show_riwayat(update, context):
         return
 
     context.user_data.clear()
+
     context.user_data["mode"] = "riwaya"
     context.user_data["quran_mode"] = False
 
     names = []
 
     for item in riwayat:
+
         name = get_riwaya_name(item)
 
         if name:
@@ -998,8 +1094,14 @@ async def show_riwayat(update, context):
 
     rows = []
 
-    for i in range(0, len(names), 2):
-        rows.append(names[i:i + 2])
+    for i in range(
+        0,
+        len(names),
+        2,
+    ):
+        rows.append(
+            names[i:i + 2]
+        )
 
     await update.message.reply_text(
         "📜 اختر الرواية:",
@@ -1017,9 +1119,11 @@ async def handle_riwaya_selected(
     selected = None
 
     for item in riwayat:
+
         if normalize_text(
             get_riwaya_name(item)
         ) == normalize_text(name):
+
             selected = item
             break
 
@@ -1030,7 +1134,10 @@ async def handle_riwaya_selected(
         )
         return
 
-    selected_id = get_riwaya_id(selected)
+    selected_id = get_riwaya_id(
+        selected
+    )
+
     selected_name = get_riwaya_name(
         selected
     )
@@ -1238,6 +1345,7 @@ def find_moshaf_by_name(
         if normalize_text(
             moshaf_name
         ) == target:
+
             return moshaf
 
     return None
@@ -1373,7 +1481,10 @@ async def send_surah_audio(
         )
         return
 
-    server = server.rstrip("/") + "/"
+    server = (
+        server.rstrip("/")
+        + "/"
+    )
 
     filename = f"{sura_id:03d}.mp3"
 
@@ -1385,6 +1496,7 @@ async def send_surah_audio(
     )
 
     try:
+
         response = requests.get(
             url,
             timeout=90,
@@ -1399,16 +1511,25 @@ async def send_surah_audio(
         for chunk in response.iter_content(
             chunk_size=1024 * 256
         ):
+
             if not chunk:
                 continue
 
             total += len(chunk)
 
+            # يبقى السقف موجودًا لأن Bot API العادي
+            # لا يقبل رفع ملف صوتي أكبر من 50MB.
             if total > MAX_AUDIO_BYTES:
+
                 await update.message.reply_text(
-                    "⚠️ حجم هذه السورة أكبر من الحد "
-                    "المسموح به لإرسال الملفات عبر البوت."
+                    "⚠️ حجم هذه السورة أكبر من "
+                    "الحد المسموح به لإرسال الملفات "
+                    "عبر البوت حاليًا.\n\n"
+                    "السورة محفوظة كملف واحد، "
+                    "لكن إرسال الملفات الأكبر من 50MB "
+                    "يحتاج إلى Local Bot API Server."
                 )
+
                 return
 
             chunks.append(chunk)
@@ -1438,9 +1559,31 @@ async def send_surah_audio(
             f"{get_sura_name(sura)}"
         )
 
+        # =================================================
+        # زر فتح التطبيق المصغر على نفس السورة
+        # =================================================
+
+        mini_app_url = (
+            f"{MINI_APP_URL}?surah={sura_id}"
+        )
+
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "📖 فتح المصحف",
+                        web_app=WebAppInfo(
+                            url=mini_app_url
+                        ),
+                    )
+                ]
+            ]
+        )
+
         await update.message.reply_audio(
             audio=audio,
             caption=caption,
+            reply_markup=keyboard,
         )
 
     except Exception as e:
@@ -1491,6 +1634,7 @@ async def show_random(
     context,
 ):
     context.user_data.clear()
+
     context.user_data[
         "quran_mode"
     ] = False
@@ -1544,10 +1688,12 @@ async def show_random(
     allowed_ids = set()
 
     if allowed:
+
         for value in re.split(
             r"[,\s]+",
             allowed,
         ):
+
             if value.isdigit():
                 allowed_ids.add(
                     int(value)
@@ -1631,16 +1777,20 @@ async def show_morning(
     )
 
     if MORNING_AUDIO.exists():
+
         try:
+
             with MORNING_AUDIO.open(
                 "rb"
             ) as audio:
+
                 await update.message.reply_audio(
                     audio=audio,
                     caption="🌅 أذكار الصباح",
                 )
 
         except Exception:
+
             logging.exception(
                 "Morning audio error"
             )
@@ -1656,16 +1806,20 @@ async def show_evening(
     )
 
     if EVENING_AUDIO.exists():
+
         try:
+
             with EVENING_AUDIO.open(
                 "rb"
             ) as audio:
+
                 await update.message.reply_audio(
                     audio=audio,
                     caption="🌙 أذكار المساء",
                 )
 
         except Exception:
+
             logging.exception(
                 "Evening audio error"
             )
@@ -1782,13 +1936,16 @@ async def go_back(
     )
 
     if mode == "sura":
+
         if context.user_data.get(
             "quran_mode"
         ):
+
             await show_home(
                 update,
                 context,
             )
+
             return
 
         await show_reciters(
@@ -1797,15 +1954,18 @@ async def go_back(
             mode="reciters",
             title="🎙️ اختر القارئ:",
         )
+
         return
 
     if mode == "moshaf":
+
         await show_reciters(
             update,
             context,
             mode="reciters",
             title="🎙️ اختر القارئ:",
         )
+
         return
 
     if mode in (
@@ -1813,27 +1973,33 @@ async def go_back(
         "quick_reciter",
         "riwaya_reciter",
     ):
+
         await show_home(
             update,
             context,
         )
+
         return
 
     if mode == "quick":
+
         await show_home(
             update,
             context,
         )
+
         return
 
     if mode in (
         "quran",
         "riwaya",
     ):
+
         await show_home(
             update,
             context,
         )
+
         return
 
     await show_home(
@@ -1859,10 +2025,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_HIDE:
+
         await hide_keyboard(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1870,10 +2038,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_HOME:
+
         await show_home(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1881,10 +2051,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_BACK:
+
         await go_back(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1892,61 +2064,77 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_QURAN:
+
         await show_quran(
             update,
             context,
         )
+
         return
 
     if text == BTN_RECITERS:
+
         await show_reciters(
             update,
             context,
             mode="reciters",
             title="🎙️ اختر القارئ:",
         )
+
         return
 
     if text == BTN_REWAYAT:
+
         await show_riwayat(
             update,
             context,
         )
+
         return
 
     if text == BTN_RANDOM:
+
         await show_random(
             update,
             context,
         )
+
         return
 
     if text == BTN_QUICK:
+
         await show_quick(
             update,
             context,
         )
+
         return
 
     if text == BTN_ADVANCED:
+
         await show_advanced(
             update,
             context,
         )
+
         return
 
     if text == BTN_MORNING:
+
         await show_morning(
             update,
             context,
         )
+
         return
 
     if text == BTN_EVENING:
+
         await show_evening(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1954,10 +2142,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_TAFSIR:
+
         await show_tafsir(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1965,10 +2155,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_DORAR:
+
         await show_dorar(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1976,10 +2168,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_CHANNEL:
+
         await show_channel(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -1987,10 +2181,12 @@ async def handle_message(
     # =====================================================
 
     if text == BTN_LANGUAGE:
+
         await show_language(
             update,
             context,
         )
+
         return
 
     # =====================================================
@@ -2004,9 +2200,8 @@ async def handle_message(
     # =====================================================
     # المصحف
     #
-    # هنا الإصلاح المهم:
-    # عند اختيار السورة من المصحف
-    # نفتح Quran.com ولا نحاول إرسال صوت.
+    # اختيار السورة هنا يفتح التطبيق المصغر
+    # مباشرة على نفس السورة.
     # =====================================================
 
     if mode == "quran":
@@ -2016,11 +2211,13 @@ async def handle_message(
         )
 
         if sura:
+
             await open_quran_sura(
                 update,
                 context,
                 sura,
             )
+
             return
 
     # =====================================================
@@ -2028,11 +2225,13 @@ async def handle_message(
     # =====================================================
 
     if mode == "riwaya":
+
         await handle_riwaya_selected(
             update,
             context,
             text,
         )
+
         return
 
     # =====================================================
@@ -2046,9 +2245,11 @@ async def handle_message(
         "riwaya_reciter",
     ):
 
-        handled = await handle_reciter_selected(
-            update,
-            context,
+        handled = (
+            await handle_reciter_selected(
+                update,
+                context,
+            )
         )
 
         if handled:
@@ -2060,9 +2261,11 @@ async def handle_message(
 
     if mode == "moshaf":
 
-        handled = await handle_moshaf_selected(
-            update,
-            context,
+        handled = (
+            await handle_moshaf_selected(
+                update,
+                context,
+            )
         )
 
         if handled:
@@ -2074,9 +2277,11 @@ async def handle_message(
 
     if mode == "sura":
 
-        handled = await handle_sura_selected(
-            update,
-            context,
+        handled = (
+            await handle_sura_selected(
+                update,
+                context,
+            )
         )
 
         if handled:
