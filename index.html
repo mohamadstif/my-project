@@ -1,456 +1,582 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
 
-  <title>القرآن الكريم</title>
+<meta name="viewport"
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
 
-  <!-- Telegram Mini App -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title>القرآن الكريم</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    min-height:100%;
+    background:#f8f7f3;
+    font-family:Arial,Tahoma,sans-serif;
+}
+
+.top{
+    height:64px;
+    background:#202b38;
+    color:white;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 20px;
+
+    position:sticky;
+    top:0;
+    z-index:20;
+}
+
+.title{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.close{
+    border:0;
+    background:none;
+    color:white;
+
+    font-size:38px;
+    line-height:1;
+
+    padding:0;
+}
+
+.pagebar{
+
+    background:white;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    gap:8px;
+
+    padding:16px 10px;
+
+    border-bottom:1px solid #ddd;
+
+    position:sticky;
+    top:64px;
+
+    z-index:10;
+}
+
+.pagebtn{
+
+    background:#2589c9;
+
+    color:white;
+
+    border:0;
+
+    border-radius:10px;
+
+    padding:14px 20px;
+
+    font-size:16px;
+
+    font-weight:bold;
+}
+
+.pagebtn:disabled{
+    opacity:.4;
+}
+
+.pageinput{
+
+    width:64px;
+
+    height:46px;
+
+    border:1px solid #ccc;
+
+    border-radius:9px;
+
+    text-align:center;
+
+    font-size:18px;
+
+    outline:none;
+}
+
+.reader{
+
+    width:100%;
+
+    padding:12px;
+
+    display:flex;
+
+    justify-content:center;
+}
+
+.mushaf{
+
+    width:100%;
+
+    max-width:700px;
+
+    background:#fffdf7;
+
+    min-height:600px;
+
+    border:1px solid #e0ddd5;
+
+    box-shadow:
+    0 2px 10px rgba(0,0,0,.08);
+
+    overflow:hidden;
+
+    text-align:center;
+}
+
+.mushaf img{
+
+    width:100%;
+
+    height:auto;
+
+    display:block;
+
+    margin:auto;
+
+    user-select:none;
+
+    -webkit-user-drag:none;
+}
+
+.loading{
+
+    padding-top:120px;
+
+    padding-bottom:120px;
+
+    color:#777;
+
+    font-size:18px;
+}
+
+.error{
+
+    padding:100px 20px;
+
+    color:#777;
+
+    font-size:18px;
+
+    line-height:2;
+}
+
+.retry{
+
+    margin-top:15px;
+
+    background:#2589c9;
+
+    color:white;
+
+    border:0;
+
+    border-radius:9px;
+
+    padding:12px 25px;
+
+    font-size:16px;
+}
+
+@media(max-width:600px){
+
+    .top{
+        height:58px;
     }
 
-    body {
-      margin: 0;
-      background: #f8f7f3;
-      color: #222;
-      font-family: Arial, Tahoma, sans-serif;
-      min-height: 100vh;
+    .pagebar{
+        top:58px;
+        padding:12px 6px;
     }
 
-    .top {
-      height: 64px;
-      background: #202b38;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
+    .pagebtn{
+        padding:12px 13px;
+        font-size:14px;
     }
 
-    .title {
-      font-size: 20px;
-      font-weight: bold;
+    .pageinput{
+        width:55px;
+        height:42px;
     }
 
-    .close {
-      width: 42px;
-      height: 42px;
-      border: 0;
-      background: transparent;
-      color: white;
-      font-size: 30px;
-      cursor: pointer;
-    }
+}
 
-    .page-bar {
-      background: white;
-      padding: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      border-bottom: 1px solid #ddd;
-      box-shadow: 0 1px 5px rgba(0,0,0,.08);
-    }
+</style>
 
-    .page-bar button {
-      background: #2589c9;
-      color: white;
-      border: 0;
-      border-radius: 10px;
-      padding: 13px 20px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .page-bar button:disabled {
-      opacity: .45;
-    }
-
-    .page-input {
-      width: 70px;
-      height: 45px;
-      border: 1px solid #ccc;
-      border-radius: 9px;
-      text-align: center;
-      font-size: 18px;
-      outline: none;
-      direction: ltr;
-    }
-
-    .page-count {
-      font-size: 15px;
-      color: #555;
-    }
-
-    .reader {
-      width: 100%;
-      min-height: calc(100vh - 125px);
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 18px 10px 30px;
-    }
-
-    .quran-page {
-      width: 100%;
-      max-width: 700px;
-      background: #fffdf7;
-      min-height: 900px;
-      border: 1px solid #e2ded2;
-      box-shadow: 0 2px 12px rgba(0,0,0,.08);
-      padding: 30px 24px;
-      position: relative;
-    }
-
-    .page-number {
-      text-align: center;
-      color: #777;
-      margin-bottom: 20px;
-      font-size: 14px;
-    }
-
-    .content {
-      font-family: "Amiri", "Traditional Arabic", Tahoma, serif;
-      font-size: 24px;
-      line-height: 2.2;
-      text-align: justify;
-    }
-
-    .loading {
-      text-align: center;
-      color: #777;
-      padding-top: 120px;
-      font-size: 18px;
-    }
-
-    .error {
-      text-align: center;
-      color: #777;
-      padding-top: 120px;
-      font-size: 18px;
-    }
-
-    .retry {
-      margin-top: 15px;
-      background: #2589c9;
-      color: white;
-      border: 0;
-      padding: 12px 22px;
-      border-radius: 9px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    @media (max-width: 600px) {
-      .top {
-        height: 58px;
-      }
-
-      .title {
-        font-size: 18px;
-      }
-
-      .page-bar {
-        gap: 6px;
-      }
-
-      .page-bar button {
-        padding: 11px 12px;
-        font-size: 14px;
-      }
-
-      .page-input {
-        width: 55px;
-        height: 40px;
-        font-size: 16px;
-      }
-
-      .page-count {
-        font-size: 13px;
-      }
-
-      .quran-page {
-        min-height: calc(100vh - 150px);
-        padding: 24px 16px;
-      }
-
-      .content {
-        font-size: 21px;
-        line-height: 2.15;
-      }
-    }
-  </style>
 </head>
 
 <body>
 
-  <div class="top">
-    <button class="close" onclick="closeApp()">×</button>
-    <div class="title">القرآن الكريم</div>
-    <div style="width:42px"></div>
-  </div>
 
-  <div class="page-bar">
+<div class="top">
 
-    <button id="nextBtn" onclick="nextPage()">
-      التالية
+    <button
+        class="close"
+        onclick="closeApp()">
+        ×
     </button>
 
-    <div class="page-count">
-      من 604
+    <div class="title">
+        تجربة
     </div>
+
+    <div style="width:40px"></div>
+
+</div>
+
+
+
+<div class="pagebar">
+
+    <button
+        id="next"
+        class="pagebtn"
+        onclick="nextPage()">
+
+        التالية
+
+    </button>
+
+
+    <span>
+        من 604
+    </span>
+
 
     <input
-      id="pageInput"
-      class="page-input"
-      type="number"
-      min="1"
-      max="604"
-      value="1"
-      onchange="goToPage()"
+        id="page"
+        class="pageinput"
+        type="number"
+        min="1"
+        max="604"
+        value="1"
+        onchange="jumpPage()"
     >
 
-    <div>
-      صفحة
-    </div>
 
-    <button id="prevBtn" onclick="prevPage()">
-      السابقة
+    <span>
+        صفحة
+    </span>
+
+
+    <button
+        id="prev"
+        class="pagebtn"
+        onclick="prevPage()">
+
+        السابقة
+
     </button>
 
-  </div>
+</div>
 
-  <main class="reader">
 
-    <div class="quran-page">
 
-      <div id="pageNumber" class="page-number">
-        الصفحة 1
-      </div>
+<div class="reader">
 
-      <div id="content" class="content">
-        <div class="loading">
-          جارٍ تحميل الصفحة...
+    <div class="mushaf">
+
+        <div
+            id="loading"
+            class="loading">
+
+            جارٍ تحميل الصفحة...
+
         </div>
-      </div>
+
+
+        <img
+            id="quranPage"
+            style="display:none"
+            alt="صفحة القرآن"
+        >
 
     </div>
 
-  </main>
+</div>
+
 
 
 <script>
 
-  // ==========================================
-  // Telegram Mini App
-  // ==========================================
+const TOTAL_PAGES = 604;
 
-  const tg = window.Telegram?.WebApp;
+let currentPage = 1;
 
-  if (tg) {
+
+/* Telegram */
+
+const tg = window.Telegram?.WebApp;
+
+if(tg){
+
     tg.ready();
+
     tg.expand();
-  }
+
+}
 
 
-  // ==========================================
-  // إعدادات القرآن
-  // ==========================================
+/* ==================================
+   تحميل صفحة المصحف
+================================== */
 
-  const TOTAL_PAGES = 604;
+function loadPage(page){
 
-  let currentPage = 1;
+    if(page < 1)
+        page = 1;
 
+    if(page > TOTAL_PAGES)
+        page = TOTAL_PAGES;
 
-  // ==========================================
-  // تحميل صفحة القرآن
-  // ==========================================
-
-  async function loadPage(page) {
-
-    if (page < 1) page = 1;
-    if (page > TOTAL_PAGES) page = TOTAL_PAGES;
 
     currentPage = page;
 
-    document.getElementById("pageInput").value = page;
 
-    document.getElementById("pageNumber").textContent =
-      "الصفحة " + page;
+    document.getElementById("page").value =
+        page;
 
-    document.getElementById("content").innerHTML = `
-      <div class="loading">
-        جارٍ تحميل الصفحة...
-      </div>
-    `;
+
+    document.getElementById("loading").style.display =
+        "block";
+
+
+    document.getElementById("loading").innerHTML =
+        "جارٍ تحميل الصفحة...";
+
+
+    document.getElementById("quranPage").style.display =
+        "none";
+
 
     updateButtons();
 
-    try {
 
-      /*
-       * جلب آيات الصفحة من Al Quran Cloud
-       */
+    /*
+       مصدر صفحات المصحف
+       001 إلى 604
+    */
 
-      const response = await fetch(
-        `https://api.alquran.cloud/v1/page/${page}/quran-uthmani`
-      );
+    const pageNumber =
+        String(page).padStart(3,"0");
 
-      if (!response.ok) {
-        throw new Error("Network error");
-      }
 
-      const result = await response.json();
+    const imageURL =
+        "https://raw.githubusercontent.com/MohamadHajjRabee/quran-qcf4/main/pages/"
+        + pageNumber
+        + ".json";
 
-      if (!result.data || !result.data.ayahs) {
-        throw new Error("No data");
-      }
 
-      let html = "";
+    /*
+       هنا نجلب بيانات الصفحة
+    */
 
-      result.data.ayahs.forEach((ayah, index) => {
+    fetch(imageURL)
 
-        html += `
-          <span>
-            ${ayah.text}
-            <span style="
-              display:inline-block;
-              margin:0 5px;
-              color:#777;
-              font-size:16px;
-            ">
-              ۝${ayah.numberInSurah}
-            </span>
-          </span>
+    .then(response => {
+
+        if(!response.ok){
+
+            throw new Error(
+                "HTTP " + response.status
+            );
+
+        }
+
+        return response.json();
+
+    })
+
+    .then(data => {
+
+        showPage(data);
+
+    })
+
+    .catch(error => {
+
+        console.error(error);
+
+        document.getElementById("loading").innerHTML = `
+
+            حدث خطأ في تحميل الصفحة.
+
+            <br>
+
+            <button
+                class="retry"
+                onclick="loadPage(${page})">
+
+                إعادة المحاولة
+
+            </button>
+
         `;
 
-      });
+    });
 
-      document.getElementById("content").innerHTML = html;
-
-    } catch (error) {
-
-      console.error(error);
-
-      document.getElementById("content").innerHTML = `
-        <div class="error">
-          حدث خطأ في تحميل الصفحة.<br>
-          حاول مرة أخرى.
-          <br>
-          <button class="retry" onclick="loadPage(${page})">
-            إعادة المحاولة
-          </button>
-        </div>
-      `;
-
-    }
-
-  }
+}
 
 
-  // ==========================================
-  // الصفحة التالية
-  // ==========================================
+/* ==================================
+   عرض الصفحة
+================================== */
 
-  function nextPage() {
+function showPage(data){
 
-    if (currentPage < TOTAL_PAGES) {
-
-      loadPage(currentPage + 1);
-
-    }
-
-  }
+    const img =
+        document.getElementById("quranPage");
 
 
-  // ==========================================
-  // الصفحة السابقة
-  // ==========================================
+    /*
+       هذا الجزء مؤقت
+       ويعرض رسالة نجاح إذا تم
+       جلب بيانات الصفحة
+    */
 
-  function prevPage() {
+    document.getElementById("loading").innerHTML =
 
-    if (currentPage > 1) {
+        "تم تحميل بيانات الصفحة " +
+        currentPage;
 
-      loadPage(currentPage - 1);
+
+    /*
+       إظهار الصورة إن كان المصدر
+       يحتوي على رابط صورة
+    */
+
+    if(data.image){
+
+        img.src = data.image;
+
+        img.onload = function(){
+
+            document.getElementById("loading")
+                .style.display = "none";
+
+            img.style.display = "block";
+
+        };
 
     }
 
-  }
+}
 
 
-  // ==========================================
-  // الانتقال إلى صفحة
-  // ==========================================
+/* ==================================
+   التالية
+================================== */
 
-  function goToPage() {
+function nextPage(){
+
+    if(currentPage < TOTAL_PAGES){
+
+        loadPage(currentPage + 1);
+
+    }
+
+}
+
+
+/* ==================================
+   السابقة
+================================== */
+
+function prevPage(){
+
+    if(currentPage > 1){
+
+        loadPage(currentPage - 1);
+
+    }
+
+}
+
+
+/* ==================================
+   الانتقال لصفحة
+================================== */
+
+function jumpPage(){
 
     let page =
-      parseInt(document.getElementById("pageInput").value);
+        parseInt(
+            document.getElementById("page").value
+        );
 
-    if (isNaN(page)) {
-      page = 1;
-    }
 
-    if (page < 1) {
-      page = 1;
-    }
+    if(isNaN(page))
+        page = 1;
 
-    if (page > TOTAL_PAGES) {
-      page = TOTAL_PAGES;
-    }
 
     loadPage(page);
 
-  }
+}
 
 
-  // ==========================================
-  // تحديث الأزرار
-  // ==========================================
+/* ==================================
+   الأزرار
+================================== */
 
-  function updateButtons() {
+function updateButtons(){
 
-    document.getElementById("prevBtn").disabled =
-      currentPage === 1;
-
-    document.getElementById("nextBtn").disabled =
-      currentPage === TOTAL_PAGES;
-
-  }
+    document.getElementById("prev").disabled =
+        currentPage === 1;
 
 
-  // ==========================================
-  // إغلاق Mini App
-  // ==========================================
+    document.getElementById("next").disabled =
+        currentPage === TOTAL_PAGES;
 
-  function closeApp() {
+}
 
-    if (tg) {
-      tg.close();
-    } else {
-      window.history.back();
+
+/* ==================================
+   إغلاق التطبيق
+================================== */
+
+function closeApp(){
+
+    if(tg){
+
+        tg.close();
+
+    }else{
+
+        history.back();
+
     }
 
-  }
+}
 
 
-  // ==========================================
-  // تشغيل الصفحة الأولى
-  // ==========================================
+/* تشغيل الصفحة الأولى */
 
-  loadPage(1);
+loadPage(1);
 
 </script>
 
