@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>المصحف الشريف</title>
+    <!-- مكتبة تليجرام للتطبيقات المصغرة -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #fdfbf7;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .btn {
+            background-color: #2481cc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .page-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        .page-control input {
+            width: 55px;
+            text-align: center;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .quran-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+            position: relative;
+            padding: 10px;
+        }
+        .quran-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        .loader {
+            position: absolute;
+            font-size: 16px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="btn" onclick="prevPage()">السابقة</button>
+        <div class="page-control">
+            <span>صفحة</span>
+            <input type="number" id="pageInput" value="1" min="1" max="604" onchange="jumpToPage(this.value)">
+            <span>من 604</span>
+        </div>
+        <button class="btn" onclick="nextPage()">التالية</button>
+    </div>
+
+    <div class="quran-container">
+        <div id="loader" class="loader">جاري تحميل الصفحة...</div>
+        <img id="quranPage" class="quran-img" src="" alt="صفحة المصحف" onload="hideLoader()" onerror="showError()">
+    </div>
+
+    <script>
+        // تهيئة التطبيق المصغر لملء شاشة تليجرام
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        let currentPage = 1;
+
+        function updatePage() {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('quranPage').style.display = 'none';
+            
+            // استدعاء صور صفحات المصحف الشريف (من 1 إلى 604)
+            document.getElementById('quranPage').src = `https://quran.ksu.edu.sy/png_big/${currentPage}.png`;
+            document.getElementById('pageInput').value = currentPage;
+        }
+
+        function nextPage() {
+            if (currentPage < 604) {
+                currentPage++;
+                updatePage();
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updatePage();
+            }
+        }
+
+        function jumpToPage(page) {
+            let p = parseInt(page);
+            if (p >= 1 && p <= 604) {
+                currentPage = p;
+                updatePage();
+            }
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('quranPage').style.display = 'block';
+        }
+
+        function showError() {
+            document.getElementById('loader').innerText = 'حدث خطأ في تحميل الصفحة. حاول مرة أخرى.';
+        }
+
+        // تشغيل الصفحة الأولى عند الفتح
+        updatePage();
+    </script>
+</body>
+</html>
