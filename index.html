@@ -1,228 +1,438 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+
 <meta charset="UTF-8">
 
 <meta name="viewport"
-content="width=device-width,
-initial-scale=1.0,
-maximum-scale=1.0,
-user-scalable=no">
+      content="width=device-width,
+      initial-scale=1.0,
+      maximum-scale=5.0,
+      user-scalable=yes">
 
-<title>القرآن الكريم</title>
+<title>تجربة</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
 
-*{
-    box-sizing:border-box;
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
-html,body{
-    margin:0;
-    padding:0;
-    width:100%;
-    min-height:100%;
-    background:#f8f7f3;
-    font-family:Arial,Tahoma,sans-serif;
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #f7f6f2;
+    font-family: Arial, Tahoma, sans-serif;
 }
 
-.top{
-    height:64px;
-    background:#202b38;
-    color:white;
 
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
+/* =========================
+   الهيدر
+========================= */
 
-    padding:0 20px;
+.header {
 
-    position:sticky;
-    top:0;
-    z-index:20;
+    height: 64px;
+
+    background: #202c38;
+
+    color: white;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 0 18px;
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+
 }
 
-.title{
-    font-size:20px;
-    font-weight:bold;
+.title {
+
+    font-size: 22px;
+
+    font-weight: bold;
+
 }
 
-.close{
-    border:0;
-    background:none;
-    color:white;
+.close {
 
-    font-size:38px;
-    line-height:1;
+    width: 44px;
 
-    padding:0;
+    height: 44px;
+
+    border: none;
+
+    background: transparent;
+
+    color: white;
+
+    font-size: 38px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
 }
 
-.pagebar{
 
-    background:white;
+/* =========================
+   شريط التحكم
+========================= */
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
+.controls {
 
-    gap:8px;
+    height: 86px;
 
-    padding:16px 10px;
+    background: white;
 
-    border-bottom:1px solid #ddd;
+    display: flex;
 
-    position:sticky;
-    top:64px;
+    align-items: center;
 
-    z-index:10;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 10px;
+
+    border-bottom: 1px solid #ddd;
+
+    box-shadow: 0 2px 7px rgba(0,0,0,.08);
+
+    position: sticky;
+
+    top: 64px;
+
+    z-index: 90;
+
 }
 
-.pagebtn{
+.nav-btn {
 
-    background:#2589c9;
+    min-width: 105px;
 
-    color:white;
+    height: 52px;
 
-    border:0;
+    border: none;
 
-    border-radius:10px;
+    border-radius: 10px;
 
-    padding:14px 20px;
+    background: #258dcc;
 
-    font-size:16px;
+    color: white;
 
-    font-weight:bold;
+    font-size: 17px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
 }
 
-.pagebtn:disabled{
-    opacity:.4;
+.nav-btn:active {
+
+    transform: scale(.97);
+
 }
 
-.pageinput{
+.nav-btn:disabled {
 
-    width:64px;
+    background: #add5e9;
 
-    height:46px;
+    cursor: default;
 
-    border:1px solid #ccc;
-
-    border-radius:9px;
-
-    text-align:center;
-
-    font-size:18px;
-
-    outline:none;
 }
 
-.reader{
+.page-input {
 
-    width:100%;
+    width: 70px;
 
-    padding:12px;
+    height: 50px;
 
-    display:flex;
+    border: 1px solid #ccc;
 
-    justify-content:center;
+    border-radius: 10px;
+
+    text-align: center;
+
+    font-size: 20px;
+
+    outline: none;
+
+    direction: ltr;
+
 }
 
-.mushaf{
+.page-input:focus {
 
-    width:100%;
+    border-color: #258dcc;
 
-    max-width:700px;
-
-    background:#fffdf7;
-
-    min-height:600px;
-
-    border:1px solid #e0ddd5;
-
-    box-shadow:
-    0 2px 10px rgba(0,0,0,.08);
-
-    overflow:hidden;
-
-    text-align:center;
 }
 
-.mushaf img{
+.page-text {
 
-    width:100%;
+    font-size: 17px;
 
-    height:auto;
+    white-space: nowrap;
 
-    display:block;
-
-    margin:auto;
-
-    user-select:none;
-
-    -webkit-user-drag:none;
 }
 
-.loading{
 
-    padding-top:120px;
+/* =========================
+   منطقة المصحف
+========================= */
 
-    padding-bottom:120px;
+.reader {
 
-    color:#777;
+    width: 100%;
 
-    font-size:18px;
+    padding: 18px 10px 40px;
+
+    display: flex;
+
+    justify-content: center;
+
+    overflow: hidden;
+
 }
 
-.error{
 
-    padding:100px 20px;
+/* =========================
+   صفحة المصحف
+========================= */
 
-    color:#777;
+.mushaf {
 
-    font-size:18px;
+    width: 100%;
 
-    line-height:2;
+    max-width: 720px;
+
+    background: #fffdf8;
+
+    border: 1px solid #dedbd3;
+
+    box-shadow: 0 2px 14px rgba(0,0,0,.10);
+
+    position: relative;
+
+    overflow: hidden;
+
 }
 
-.retry{
 
-    margin-top:15px;
+/* صورة المصحف */
 
-    background:#2589c9;
+#quranPage {
 
-    color:white;
+    display: block;
 
-    border:0;
+    width: 100%;
 
-    border-radius:9px;
+    height: auto;
 
-    padding:12px 25px;
+    margin: 0;
 
-    font-size:16px;
+    padding: 0;
+
+    user-select: none;
+
+    -webkit-user-drag: none;
+
 }
 
-@media(max-width:600px){
 
-    .top{
-        height:58px;
+/* =========================
+   التحميل
+========================= */
+
+.loading {
+
+    min-height: 700px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: #777;
+
+    font-size: 19px;
+
+    text-align: center;
+
+    padding: 30px;
+
+}
+
+
+/* دائرة التحميل */
+
+.spinner {
+
+    width: 36px;
+
+    height: 36px;
+
+    border: 4px solid #ddd;
+
+    border-top-color: #258dcc;
+
+    border-radius: 50%;
+
+    animation: spin .8s linear infinite;
+
+    margin-bottom: 18px;
+
+}
+
+@keyframes spin {
+
+    to {
+        transform: rotate(360deg);
     }
 
-    .pagebar{
-        top:58px;
-        padding:12px 6px;
+}
+
+
+/* =========================
+   الخطأ
+========================= */
+
+.error {
+
+    min-height: 500px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: #777;
+
+    text-align: center;
+
+    font-size: 18px;
+
+    line-height: 2;
+
+    padding: 30px;
+
+}
+
+.retry {
+
+    margin-top: 15px;
+
+    padding: 12px 25px;
+
+    background: #258dcc;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 9px;
+
+    font-size: 16px;
+
+}
+
+
+/* =========================
+   الهاتف
+========================= */
+
+@media (max-width: 600px) {
+
+    .header {
+
+        height: 58px;
+
     }
 
-    .pagebtn{
-        padding:12px 13px;
-        font-size:14px;
+    .controls {
+
+        height: 82px;
+
+        top: 58px;
+
+        gap: 5px;
+
+        padding: 8px 5px;
+
     }
 
-    .pageinput{
-        width:55px;
-        height:42px;
+    .nav-btn {
+
+        min-width: 86px;
+
+        height: 48px;
+
+        padding: 0 8px;
+
+        font-size: 15px;
+
     }
+
+    .page-input {
+
+        width: 58px;
+
+        height: 46px;
+
+        font-size: 18px;
+
+    }
+
+    .page-text {
+
+        font-size: 14px;
+
+    }
+
+    .reader {
+
+        padding: 10px 6px 30px;
+
+    }
+
+    .mushaf {
+
+        width: 100%;
+
+    }
+
+}
+
+
+/* =========================
+   السحب
+========================= */
+
+.mushaf {
+
+    touch-action: pan-y pinch-zoom;
 
 }
 
@@ -230,32 +440,48 @@ html,body{
 
 </head>
 
+
 <body>
 
 
-<div class="top">
+<!-- =========================
+     الهيدر
+========================= -->
+
+<header class="header">
 
     <button
         class="close"
         onclick="closeApp()">
+
         ×
+
     </button>
 
+
     <div class="title">
+
         تجربة
+
     </div>
 
-    <div style="width:40px"></div>
 
-</div>
+    <div style="width:44px;"></div>
+
+</header>
 
 
 
-<div class="pagebar">
+<!-- =========================
+     أزرار الصفحات
+========================= -->
+
+<div class="controls">
+
 
     <button
-        id="next"
-        class="pagebtn"
+        id="nextBtn"
+        class="nav-btn"
         onclick="nextPage()">
 
         التالية
@@ -263,47 +489,62 @@ html,body{
     </button>
 
 
-    <span>
+    <span class="page-text">
+
         من 604
+
     </span>
 
 
     <input
-        id="page"
-        class="pageinput"
+        id="pageInput"
+        class="page-input"
         type="number"
         min="1"
         max="604"
         value="1"
-        onchange="jumpPage()"
+        inputmode="numeric"
+        onchange="goToPage()"
     >
 
 
-    <span>
+    <span class="page-text">
+
         صفحة
+
     </span>
 
 
     <button
-        id="prev"
-        class="pagebtn"
+        id="prevBtn"
+        class="nav-btn"
         onclick="prevPage()">
 
         السابقة
 
     </button>
 
+
 </div>
 
 
 
-<div class="reader">
+<!-- =========================
+     المصحف
+========================= -->
 
-    <div class="mushaf">
+<main class="reader">
+
+    <div
+        id="mushaf"
+        class="mushaf">
+
 
         <div
             id="loading"
             class="loading">
+
+            <div class="spinner"></div>
 
             جارٍ تحميل الصفحة...
 
@@ -312,28 +553,29 @@ html,body{
 
         <img
             id="quranPage"
-            style="display:none"
-            alt="صفحة القرآن"
+            alt="صفحة القرآن الكريم"
+            style="display:none;"
         >
+
 
     </div>
 
-</div>
+</main>
 
 
 
 <script>
 
-const TOTAL_PAGES = 604;
+/* =====================================
+   Telegram Mini App
+===================================== */
 
-let currentPage = 1;
+const tg =
+    window.Telegram &&
+    window.Telegram.WebApp;
 
 
-/* Telegram */
-
-const tg = window.Telegram?.WebApp;
-
-if(tg){
+if (tg) {
 
     tg.ready();
 
@@ -342,91 +584,126 @@ if(tg){
 }
 
 
-/* ==================================
-   تحميل صفحة المصحف
-================================== */
 
-function loadPage(page){
+/* =====================================
+   الإعدادات
+===================================== */
 
-    if(page < 1)
+const TOTAL_PAGES = 604;
+
+let currentPage = 1;
+
+
+/* =====================================
+   عناصر الصفحة
+===================================== */
+
+const img =
+    document.getElementById("quranPage");
+
+const loading =
+    document.getElementById("loading");
+
+const pageInput =
+    document.getElementById("pageInput");
+
+const prevBtn =
+    document.getElementById("prevBtn");
+
+const nextBtn =
+    document.getElementById("nextBtn");
+
+
+
+/* =====================================
+   رابط صفحة القرآن
+===================================== */
+
+function getPageUrl(page) {
+
+    return (
+        "https://api.islamic.app/v1/mushaf/page/"
+        + page
+        + ".svg"
+        + "?font=uthmani"
+        + "&theme=light"
+        + "&width=720"
+    );
+
+}
+
+
+
+/* =====================================
+   تحميل صفحة
+===================================== */
+
+function loadPage(page, save = true) {
+
+    page = parseInt(page);
+
+    if (isNaN(page)) {
         page = 1;
+    }
 
-    if(page > TOTAL_PAGES)
+    if (page < 1) {
+        page = 1;
+    }
+
+    if (page > TOTAL_PAGES) {
         page = TOTAL_PAGES;
+    }
 
 
     currentPage = page;
 
-
-    document.getElementById("page").value =
-        page;
+    pageInput.value = page;
 
 
-    document.getElementById("loading").style.display =
-        "block";
+    /* إظهار التحميل */
+
+    loading.style.display = "flex";
+
+    loading.innerHTML = `
+        <div class="spinner"></div>
+        جارٍ تحميل الصفحة ${page}...
+    `;
 
 
-    document.getElementById("loading").innerHTML =
-        "جارٍ تحميل الصفحة...";
+    img.style.display = "none";
 
 
-    document.getElementById("quranPage").style.display =
-        "none";
-
+    /* تحديث الأزرار */
 
     updateButtons();
 
 
-    /*
-       مصدر صفحات المصحف
-       001 إلى 604
-    */
+    /* رابط الصفحة */
 
-    const pageNumber =
-        String(page).padStart(3,"0");
+    const url =
+        getPageUrl(page);
 
 
-    const imageURL =
-        "https://raw.githubusercontent.com/MohamadHajjRabee/quran-qcf4/main/pages/"
-        + pageNumber
-        + ".json";
+    /* تحميل الصورة */
+
+    img.onload = function () {
+
+        loading.style.display = "none";
+
+        img.style.display = "block";
+
+    };
 
 
-    /*
-       هنا نجلب بيانات الصفحة
-    */
+    img.onerror = function () {
 
-    fetch(imageURL)
+        loading.innerHTML = `
 
-    .then(response => {
-
-        if(!response.ok){
-
-            throw new Error(
-                "HTTP " + response.status
-            );
-
-        }
-
-        return response.json();
-
-    })
-
-    .then(data => {
-
-        showPage(data);
-
-    })
-
-    .catch(error => {
-
-        console.error(error);
-
-        document.getElementById("loading").innerHTML = `
-
-            حدث خطأ في تحميل الصفحة.
-
-            <br>
+            <div>
+                تعذر تحميل صفحة المصحف.
+                <br>
+                تأكد من اتصال الإنترنت.
+            </div>
 
             <button
                 class="retry"
@@ -438,147 +715,317 @@ function loadPage(page){
 
         `;
 
+    };
+
+
+    img.src = url;
+
+
+    /* حفظ آخر صفحة */
+
+    if (save) {
+
+        localStorage.setItem(
+            "lastQuranPage",
+            page
+        );
+
+    }
+
+
+    /* تغيير الرابط بدون إعادة تحميل */
+
+    try {
+
+        history.replaceState(
+            null,
+            "",
+            "#page=" + page
+        );
+
+    } catch(e) {}
+
+}
+
+
+
+/* =====================================
+   التالية
+===================================== */
+
+function nextPage() {
+
+    if (currentPage < TOTAL_PAGES) {
+
+        loadPage(
+            currentPage + 1
+        );
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }
+
+}
+
+
+
+/* =====================================
+   السابقة
+===================================== */
+
+function prevPage() {
+
+    if (currentPage > 1) {
+
+        loadPage(
+            currentPage - 1
+        );
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }
+
+}
+
+
+
+/* =====================================
+   الذهاب إلى صفحة
+===================================== */
+
+function goToPage() {
+
+    let page =
+        parseInt(
+            pageInput.value
+        );
+
+
+    if (isNaN(page)) {
+
+        page = currentPage;
+
+    }
+
+
+    loadPage(page);
+
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
     });
 
 }
 
 
-/* ==================================
-   عرض الصفحة
-================================== */
 
-function showPage(data){
+/* =====================================
+   تحديث الأزرار
+===================================== */
 
-    const img =
-        document.getElementById("quranPage");
+function updateButtons() {
 
-
-    /*
-       هذا الجزء مؤقت
-       ويعرض رسالة نجاح إذا تم
-       جلب بيانات الصفحة
-    */
-
-    document.getElementById("loading").innerHTML =
-
-        "تم تحميل بيانات الصفحة " +
-        currentPage;
+    prevBtn.disabled =
+        currentPage <= 1;
 
 
-    /*
-       إظهار الصورة إن كان المصدر
-       يحتوي على رابط صورة
-    */
-
-    if(data.image){
-
-        img.src = data.image;
-
-        img.onload = function(){
-
-            document.getElementById("loading")
-                .style.display = "none";
-
-            img.style.display = "block";
-
-        };
-
-    }
+    nextBtn.disabled =
+        currentPage >= TOTAL_PAGES;
 
 }
 
 
-/* ==================================
-   التالية
-================================== */
 
-function nextPage(){
+/* =====================================
+   إغلاق Mini App
+===================================== */
 
-    if(currentPage < TOTAL_PAGES){
+function closeApp() {
 
-        loadPage(currentPage + 1);
-
-    }
-
-}
-
-
-/* ==================================
-   السابقة
-================================== */
-
-function prevPage(){
-
-    if(currentPage > 1){
-
-        loadPage(currentPage - 1);
-
-    }
-
-}
-
-
-/* ==================================
-   الانتقال لصفحة
-================================== */
-
-function jumpPage(){
-
-    let page =
-        parseInt(
-            document.getElementById("page").value
-        );
-
-
-    if(isNaN(page))
-        page = 1;
-
-
-    loadPage(page);
-
-}
-
-
-/* ==================================
-   الأزرار
-================================== */
-
-function updateButtons(){
-
-    document.getElementById("prev").disabled =
-        currentPage === 1;
-
-
-    document.getElementById("next").disabled =
-        currentPage === TOTAL_PAGES;
-
-}
-
-
-/* ==================================
-   إغلاق التطبيق
-================================== */
-
-function closeApp(){
-
-    if(tg){
+    if (tg) {
 
         tg.close();
 
-    }else{
+    } else {
 
-        history.back();
+        window.history.back();
 
     }
 
 }
 
 
-/* تشغيل الصفحة الأولى */
 
-loadPage(1);
+/* =====================================
+   السحب يمين / يسار
+===================================== */
+
+let touchStartX = 0;
+
+let touchStartY = 0;
+
+
+document
+.getElementById("mushaf")
+.addEventListener(
+    "touchstart",
+    function(e) {
+
+        if (!e.touches.length)
+            return;
+
+        touchStartX =
+            e.touches[0].clientX;
+
+        touchStartY =
+            e.touches[0].clientY;
+
+    },
+    {passive:true}
+);
+
+
+document
+.getElementById("mushaf")
+.addEventListener(
+    "touchend",
+    function(e) {
+
+        if (!e.changedTouches.length)
+            return;
+
+        const endX =
+            e.changedTouches[0].clientX;
+
+        const endY =
+            e.changedTouches[0].clientY;
+
+
+        const diffX =
+            endX - touchStartX;
+
+        const diffY =
+            endY - touchStartY;
+
+
+        /*
+           نتأكد أن الحركة أفقية
+           وليست تمريرًا للأعلى والأسفل
+        */
+
+        if (
+            Math.abs(diffX) > 70 &&
+            Math.abs(diffX) > Math.abs(diffY)
+        ) {
+
+            if (diffX < 0) {
+
+                /*
+                   سحب لليسار
+                   الصفحة التالية
+                */
+
+                nextPage();
+
+            } else {
+
+                /*
+                   سحب لليمين
+                   الصفحة السابقة
+                */
+
+                prevPage();
+
+            }
+
+        }
+
+    },
+    {passive:true}
+);
+
+
+
+/* =====================================
+   استرجاع آخر صفحة
+===================================== */
+
+function getInitialPage() {
+
+    /* من الرابط */
+
+    const hash =
+        window.location.hash;
+
+
+    const match =
+        hash.match(
+            /page=(\d+)/
+        );
+
+
+    if (match) {
+
+        const page =
+            parseInt(match[1]);
+
+        if (
+            page >= 1 &&
+            page <= TOTAL_PAGES
+        ) {
+
+            return page;
+
+        }
+
+    }
+
+
+    /* من التخزين */
+
+    const saved =
+        parseInt(
+            localStorage.getItem(
+                "lastQuranPage"
+            )
+        );
+
+
+    if (
+        !isNaN(saved) &&
+        saved >= 1 &&
+        saved <= TOTAL_PAGES
+    ) {
+
+        return saved;
+
+    }
+
+
+    return 1;
+
+}
+
+
+
+/* =====================================
+   تشغيل
+===================================== */
+
+loadPage(
+    getInitialPage(),
+    false
+);
 
 </script>
 
 </body>
+
 </html>
