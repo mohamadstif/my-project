@@ -1,2484 +1,539 @@
-import io
-import logging
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+🕌 بوت القرآن الكريم - النسخة الكاملة النهائية
+- إصلاح جميع الأخطاء
+- دعم السور الطويلة (البقرة، آل عمران...)
+- إرسال كـ audio أو document تلقائياً
+- خطة بديلة بروابط مباشرة عند فشل الإرسال
+"""
+
 import os
 import random
-import re
-import unicodedata
-from pathlib import Path
+import logging
+from typing import Optional, Dict, Any, List
 
-import requests
-
+import httpx
+from dotenv import load_dotenv
 from telegram import (
+    Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-    Update,
-    WebAppInfo,
 )
-
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
-    ContextTypes,
+    CallbackQueryHandler,
     MessageHandler,
     filters,
+    ContextTypes,
 )
 
+# ============================================================
+#                         الإعدادات
+# ============================================================
 
-# =========================================================
-# الإعدادات
-# =========================================================
+load_dotenv()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("❌ BOT_TOKEN غير موجود في ملف .env")
 
-API_BASE = "https://mp3quran.net/api/v3"
+CHANNEL_USERNAME = "@x7oly"
+CHANNEL_LINK = "https://t.me/x7oly"
 
-QURAN_SITE = "https://quran.com"
-TAFSIR_URL = "https://quranenc.com/ar"
-DORAR_URL = "https://dorar.net/hadith/search"
-CHANNEL_URL = "https://t.me/x7oly"
+DEFAULT_LANGUAGE = "ar"
 
-# رابط التطبيق المصغر
-MINI_APP_URL = "https://mohamadstif.github.io/my-project/"
-
-# الحد الأقصى للرفع عبر Bot API العادي
-MAX_AUDIO_BYTES = 50 * 1024 * 1024
-
-BASE_DIR = Path(__file__).resolve().parent
-FILES_DIR = BASE_DIR / "files"
-
-MORNING_AUDIO = FILES_DIR / "adhkar_morning.mp3"
-EVENING_AUDIO = FILES_DIR / "adhkar_evening.mp3"
-
-
-# =========================================================
-# أزرار البوت
-# =========================================================
-
-BTN_QURAN = "📖 المصحف"
-BTN_RECITERS = "🎙️ القرائ"
-BTN_REWAYAT = "📜 الروايات"
-BTN_RANDOM = "🎲 عشوائي"
-BTN_QUICK = "⚡ اختيار سريع"
-BTN_ADVANCED = "⚙️ اختيار متقدم"
-BTN_MORNING = "🌅 أذكار الصباح"
-BTN_EVENING = "🌙 أذكار المساء"
-BTN_TAFSIR = "📚 تفسير القرآن"
-BTN_DORAR = "📜 الدرر السنية"
-BTN_CHANNEL = "📢 قناتنا على تيليجرام"
-BTN_LANGUAGE = "🌐 تغيير اللغة"
-
-BTN_BACK = "🔙 رجوع"
-BTN_HOME = "🏠 القائمة الرئيسية"
-BTN_HIDE = "❌ إخفاء القائمة"
-
-
-# =========================================================
-# روابط سور القرآن في Quran.com
-# =========================================================
-
-QURAN_SLUGS = {
-    1: "al-fatihah",
-    2: "al-baqarah",
-    3: "ali-imran",
-    4: "an-nisa",
-    5: "al-maidah",
-    6: "al-anam",
-    7: "al-araf",
-    8: "al-anfal",
-    9: "at-tawbah",
-    10: "yunus",
-    11: "hud",
-    12: "yusuf",
-    13: "ar-rad",
-    14: "ibrahim",
-    15: "al-hijr",
-    16: "an-nahl",
-    17: "al-isra",
-    18: "al-kahf",
-    19: "maryam",
-    20: "ta-ha",
-    21: "al-anbiya",
-    22: "al-hajj",
-    23: "al-muminun",
-    24: "an-nur",
-    25: "al-furqan",
-    26: "ash-shuara",
-    27: "an-naml",
-    28: "al-qasas",
-    29: "al-ankabut",
-    30: "ar-rum",
-    31: "luqman",
-    32: "as-sajdah",
-    33: "al-ahzab",
-    34: "saba",
-    35: "fatir",
-    36: "ya-sin",
-    37: "as-saffat",
-    38: "sad",
-    39: "az-zumar",
-    40: "ghafir",
-    41: "fussilat",
-    42: "ash-shura",
-    43: "az-zukhruf",
-    44: "ad-dukhan",
-    45: "al-jathiyah",
-    46: "al-ahqaf",
-    47: "muhammad",
-    48: "al-fath",
-    49: "al-hujurat",
-    50: "qaf",
-    51: "adh-dhariyat",
-    52: "at-tur",
-    53: "an-najm",
-    54: "al-qamar",
-    55: "ar-rahman",
-    56: "al-waqiah",
-    57: "al-hadid",
-    58: "al-mujadila",
-    59: "al-hashr",
-    60: "al-mumtahanah",
-    61: "as-saff",
-    62: "al-jumua",
-    63: "al-munafiqun",
-    64: "at-taghabun",
-    65: "at-talaq",
-    66: "at-tahrim",
-    67: "al-mulk",
-    68: "al-qalam",
-    69: "al-haqqah",
-    70: "al-maarij",
-    71: "nuh",
-    72: "al-jinn",
-    73: "al-muzzammil",
-    74: "al-muddaththir",
-    75: "al-qiyamah",
-    76: "al-insan",
-    77: "al-mursalat",
-    78: "an-naba",
-    79: "an-naziat",
-    80: "abasa",
-    81: "at-takwir",
-    82: "al-infitar",
-    83: "al-mutaffifin",
-    84: "al-inshiqaq",
-    85: "al-buruj",
-    86: "at-tariq",
-    87: "al-ala",
-    88: "al-ghashiyah",
-    89: "al-fajr",
-    90: "al-balad",
-    91: "ash-shams",
-    92: "al-layl",
-    93: "ad-duha",
-    94: "ash-sharh",
-    95: "at-tin",
-    96: "al-alaq",
-    97: "al-qadr",
-    98: "al-bayyinah",
-    99: "az-zalzalah",
-    100: "al-adiyat",
-    101: "al-qariah",
-    102: "at-takathur",
-    103: "al-asr",
-    104: "al-humazah",
-    105: "al-fil",
-    106: "quraysh",
-    107: "al-maun",
-    108: "al-kawthar",
-    109: "al-kafirun",
-    110: "an-nasr",
-    111: "al-masad",
-    112: "al-ikhlas",
-    113: "al-falaq",
-    114: "an-nas",
+LANGUAGES = {
+    "ar": "🇸🇦 العربية",
+    "en": "🇬🇧 English",
+    "fr": "🇫🇷 Français",
+    "tr": "🇹🇷 Türkçe",
+    "ur": "🇵🇰 اردو",
+    "id": "🇮🇩 Indonesia",
 }
 
+BASE_URL = "https://api.alquran.cloud/v1"
 
-# =========================================================
-# لوحة القائمة الرئيسية
-# =========================================================
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
-MAIN_KEYBOARD = [
-    [BTN_QURAN, BTN_RECITERS],
-    [BTN_REWAYAT, BTN_RANDOM],
-    [BTN_QUICK, BTN_ADVANCED],
-    [BTN_MORNING, BTN_EVENING],
-    [BTN_TAFSIR],
-    [BTN_DORAR],
-    [BTN_CHANNEL],
-    [BTN_LANGUAGE],
-    [BTN_HIDE],
+# ============================================================
+#                        البيانات
+# ============================================================
+
+SURAH_NAMES: Dict[str, List[str]] = {
+    "ar": [
+        "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة",
+        "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
+        "هود", "يوسف", "الرعد", "إبراهيم", "الحجر",
+        "النحل", "الإسراء", "الكهف", "مريم", "طه",
+        "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان",
+        "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
+        "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر",
+        "يس", "الصافات", "ص", "الزمر", "غافر",
+        "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية",
+        "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
+        "الذاريات", "الطور", "النجم", "القمر", "الرحمن",
+        "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
+        "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق",
+        "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
+        "نوح", "الجن", "المزمل", "المدثر", "القيامة",
+        "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
+        "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج",
+        "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
+        "الشمس", "الليل", "الضحى", "الشرح", "التين",
+        "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
+        "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل",
+        "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
+        "المسد", "الإخلاص", "الفلق", "الناس",
+    ],
+    "en": [
+        "Al-Fatiha", "Al-Baqarah", "Aal-e-Imran", "An-Nisa", "Al-Ma'idah",
+        "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Tawbah", "Yunus",
+        "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr",
+        "An-Nahl", "Al-Isra", "Al-Kahf", "Maryam", "Taha",
+        "Al-Anbiya", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan",
+        "Ash-Shu'ara", "An-Naml", "Al-Qasas", "Al-Ankabut", "Ar-Rum",
+        "Luqman", "As-Sajda", "Al-Ahzab", "Saba", "Fatir",
+        "Ya-Sin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
+        "Fussilat", "Ash-Shura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jathiya",
+        "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
+        "Adh-Dhariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman",
+        "Al-Waqi'a", "Al-Hadid", "Al-Mujadila", "Al-Hashr", "Al-Mumtahina",
+        "As-Saff", "Al-Jumu'a", "Al-Munafiqun", "At-Taghabun", "At-Talaq",
+        "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqa", "Al-Ma'arij",
+        "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddaththir", "Al-Qiyama",
+        "Al-Insan", "Al-Mursalat", "An-Naba", "An-Nazi'at", "Abasa",
+        "At-Takwir", "Al-Infitar", "Al-Mutaffifin", "Al-Inshiqaq", "Al-Buruj",
+        "At-Tariq", "Al-A'la", "Al-Ghashiya", "Al-Fajr", "Al-Balad",
+        "Ash-Shams", "Al-Layl", "Ad-Duha", "Ash-Sharh", "At-Tin",
+        "Al-Alaq", "Al-Qadr", "Al-Bayyina", "Az-Zalzala", "Al-Adiyat",
+        "Al-Qari'a", "At-Takathur", "Al-Asr", "Al-Humaza", "Al-Fil",
+        "Quraysh", "Al-Ma'un", "Al-Kawthar", "Al-Kafirun", "An-Nasr",
+        "Al-Masad", "Al-Ikhlas", "Al-Falaq", "An-Nas",
+    ],
+}
+
+# قائمة القراء (21 قارئ فعلي مدعوم في api.alquran.cloud)
+RECITERS: List[Dict[str, str]] = [
+    {"id": "ar.alafasy",              "name": "مشاري العفاسي"},
+    {"id": "ar.abdulbasitmurattal",   "name": "عبد الباسط عبد الصمد (مرتل)"},
+    {"id": "ar.abdurrahmaansudais",   "name": "عبد الرحمن السديس"},
+    {"id": "ar.saoodshuraym",         "name": "سعود الشريم"},
+    {"id": "ar.mahermuaiqly",         "name": "ماهر المعيقلي"},
+    {"id": "ar.husary",               "name": "محمود خليل الحصري"},
+    {"id": "ar.husarymujawwad",       "name": "محمود خليل الحصري (مجود)"},
+    {"id": "ar.minshawi",             "name": "محمد صديق المنشاوي"},
+    {"id": "ar.minshawimujawwad",     "name": "محمد صديق المنشاوي (مجود)"},
+    {"id": "ar.hudhaify",             "name": "علي الحذيفي"},
+    {"id": "ar.muhammadayyoub",       "name": "محمد أيوب"},
+    {"id": "ar.muhammadjibreel",      "name": "محمد جبريل"},
+    {"id": "ar.ahmedajamy",           "name": "أحمد بن علي العجمي"},
+    {"id": "ar.hanirifai",            "name": "هاني الرفاعي"},
+    {"id": "ar.qatami",               "name": "ناصر القطامي"},
+    {"id": "ar.abdullahbasfar",       "name": "عبد الله باسفر"},
+    {"id": "ar.ibrahimakhbar",        "name": "إبراهيم الأخضر"},
+    {"id": "ar.aymanswoaid",          "name": "أيمن سويد"},
+    {"id": "ar.abdulsamad",           "name": "عبد الباسط (مجود)"},
+    {"id": "ar.shaatree",             "name": "أبو بكر الشاطري"},
+    {"id": "ar.parhizgar",            "name": "پرهيزگار"},
 ]
 
-
-HOME_MARKUP = ReplyKeyboardMarkup(
-    MAIN_KEYBOARD,
-    resize_keyboard=True,
-    is_persistent=True,
-    one_time_keyboard=False,
-)
-
-
-def menu_keyboard(rows):
-    rows = list(rows)
-
-    rows.append([BTN_BACK, BTN_HOME])
-    rows.append([BTN_HIDE])
-
-    return ReplyKeyboardMarkup(
-        rows,
-        resize_keyboard=True,
-        is_persistent=True,
-        one_time_keyboard=False,
-    )
-
-
-# =========================================================
-# الكاش
-# =========================================================
-
-_cache = {
-    "reciters": None,
-    "suras": None,
-    "riwayat": None,
+# ربط القارئ بـ CDN لتشغيل السورة كاملة (mp3quran.net)
+RECITER_CDN: Dict[str, str] = {
+    "ar.alafasy":            "https://server8.mp3quran.net/afs/",
+    "ar.abdulbasitmurattal": "https://server7.mp3quran.net/basit/",
+    "ar.abdurrahmaansudais": "https://server11.mp3quran.net/sds/",
+    "ar.saoodshuraym":       "https://server7.mp3quran.net/shur/",
+    "ar.mahermuaiqly":       "https://server12.mp3quran.net/maher/",
+    "ar.husary":             "https://server13.mp3quran.net/husr/",
+    "ar.minshawi":           "https://server10.mp3quran.net/minsh/",
+    "ar.hudhaify":           "https://server9.mp3quran.net/hthfi/",
+    "ar.muhammadayyoub":     "https://server8.mp3quran.net/ayyub/",
+    "ar.muhammadjibreel":    "https://server8.mp3quran.net/jbrl/",
+    "ar.ahmedajamy":         "https://server10.mp3quran.net/ajm/",
+    "ar.hanirifai":          "https://server8.mp3quran.net/rifai/",
+    "ar.qatami":             "https://server6.mp3quran.net/qtm/",
+    "ar.abdullahbasfar":     "https://server6.mp3quran.net/bsfr/",
+    "ar.aymanswoaid":        "https://server8.mp3quran.net/swoaid/",
 }
 
+# السور الطويلة التي نرسلها كـ document تجنّباً لمشكلة حجم الـ audio
+LONG_SURAHS = {
+    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18, 20, 23,
+    26, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+    56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+    71, 72, 73, 74, 75, 76, 77, 78, 79,
+}
 
-# =========================================================
-# أدوات مساعدة
-# =========================================================
+# أذكار الصباح
+MORNING_ADHKAR: List[Dict[str, str]] = [
+    {"text": "اللَّهُ لاَ إِلَهَ إِلاَّ هُوَ الْحَيُّ الْقَيُّومُ... آية الكرسي",
+     "reference": "سورة البقرة - الآية 255"},
+    {"text": "أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ",
+     "reference": "قراءة المعوذات (الإخلاص - الفلق - الناس) 3 مرات"},
+    {"text": "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ",
+     "reference": "أذكار الصباح"},
+    {"text": "اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ",
+     "reference": "أذكار الصباح"},
+    {"text": "اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلاَّ أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ...",
+     "reference": "سيد الاستغفار"},
+    {"text": "اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ وَأُشْهِدُ حَمَلَةَ عَرْشِكَ وَمَلاَئِكَتَكَ وَجَمِيعَ خَلْقِكَ أَنَّكَ أَنْتَ اللَّهُ لاَ إِلَهَ إِلاَّ أَنْتَ وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ",
+     "reference": "أذكار الصباح (4 مرات)"},
+    {"text": "اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ فَمِنْكَ وَحْدَكَ لاَ شَرِيكَ لَكَ فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ",
+     "reference": "أذكار الصباح"},
+    {"text": "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لاَ إِلَهَ إِلاَّ أَنْتَ",
+     "reference": "أذكار الصباح (3 مرات)"},
+    {"text": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ وَعَذَابِ الْقَبْرِ",
+     "reference": "أذكار الصباح"},
+    {"text": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ: عَدَدَ خَلْقِهِ وَرِضَا نَفْسِهِ وَزِنَةَ عَرْشِهِ وَمِدَادَ كَلِمَاتِهِ",
+     "reference": "أذكار الصباح (3 مرات)"},
+    {"text": "سُبْحَانَ اللَّهِ الْعَظِيمِ وَبِحَمْدِهِ",
+     "reference": "أذكار الصباح (100 مرة)"},
+    {"text": "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+     "reference": "أذكار الصباح (10 مرات)"},
+    {"text": "بِسْمِ اللَّهِ الَّذِي لاَ يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الأَرْضِ وَلاَ فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+     "reference": "أذكار الصباح (3 مرات)"},
+    {"text": "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالإِسْلاَمِ دِينًا، وَبِمُحَمَّدٍ ﷺ نَبِيًّا",
+     "reference": "أذكار الصباح (3 مرات)"},
+    {"text": "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ أَصْلِحْ لِي شَأْنِي كُلَّهُ وَلاَ تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ",
+     "reference": "أذكار الصباح"},
+    {"text": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ وَالْعَجْزِ وَالْكَسَلِ وَالْجُبْنِ وَالْبُخْلِ وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ",
+     "reference": "أذكار الصباح"},
+]
 
-def normalize_text(text):
-    if not text:
-        return ""
+VIRTUES: List[Dict[str, str]] = [
+    {"title": "✨ فضل قراءة القرآن",
+     "text": "قال الله تعالى:\n﴿إِنَّ الَّذِينَ يَتْلُونَ كِتَابَ اللَّهِ وَأَقَامُوا الصَّلَاةَ وَأَنفَقُوا مِمَّا رَزَقْنَاهُمْ سِرًّا وَعَلَانِيَةً يَرْجُونَ تِجَارَةً لَّن تَبُورَ﴾\n[فاطر: 29]"},
+    {"title": "🌙 حديث شريف",
+     "text": "قال رسول الله ﷺ:\n«اقْرَؤُوا الْقُرْآنَ فَإِنَّهُ يَأْتِي يَوْمَ الْقِيَامَةِ شَفِيعًا لِأَصْحَابِهِ»\n[رواه مسلم]"},
+    {"title": "📖 حديث شريف",
+     "text": "قال رسول الله ﷺ:\n«خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ»\n[رواه البخاري]"},
+    {"title": "💎 حديث شريف",
+     "text": "قال رسول الله ﷺ:\n«مَنْ قَرَأَ حَرْفًا مِنْ كِتَابِ اللَّهِ فَلَهُ بِهِ حَسَنَةٌ، وَالْحَسَنَةُ بِعَشْرِ أَمْثَالِهَا، لَا أَقُولُ الم حَرْفٌ، وَلَكِنْ أَلِفٌ حَرْفٌ وَلَامٌ حَرْفٌ وَمِيمٌ حَرْفٌ»\n[رواه الترمذي]"},
+    {"title": "🌟 حديث شريف",
+     "text": "قال رسول الله ﷺ:\n«يُقَالُ لِصَاحِبِ الْقُرْآنِ: اقْرَأْ وَارْتَقِ وَرَتِّلْ كَمَا كُنْتَ تُرَتِّلُ فِي الدُّنْيَا، فَإِنَّ مَنْزِلَكَ عِنْدَ آخِرِ آيَةٍ تَقْرَؤُهَا»\n[رواه أبو داود والترمذي]"},
+    {"title": "🌿 حديث شريف",
+     "text": "قال رسول الله ﷺ:\n«مَثَلُ الْمُؤْمِنِ الَّذِي يَقْرَأُ الْقُرْآنَ مَثَلُ الْأُتْرُجَّةِ، رِيحُهَا طَيِّبٌ وَطَعْمُهَا طَيِّبٌ»\n[رواه البخاري ومسلم]"},
+    {"title": "🤲 دعاء ختم القرآن",
+     "text": "اللَّهُمَّ ارْحَمْنِي بِالْقُرْآنِ الْعَظِيمِ، وَاجْعَلْهُ لِي إِمَامًا وَنُورًا وَهُدًى وَرَحْمَةً، اللَّهُمَّ ذَكِّرْنِي مِنْهُ مَا نَسِيتُ وَعَلِّمْنِي مِنْهُ مَا جَهِلْتُ وَارْزُقْنِي تِلَاوَتَهُ آنَاءَ اللَّيْلِ وَأَطْرَافَ النَّهَارِ، وَاجْعَلْهُ لِي حُجَّةً يَا رَبَّ الْعَالَمِينَ"},
+]
 
-    text = str(text)
+# ============================================================
+#                     عميل الـ API + Cache
+# ============================================================
 
-    text = unicodedata.normalize(
-        "NFKD",
-        text,
-    )
-
-    text = "".join(
-        ch for ch in text
-        if not unicodedata.combining(ch)
-    )
-
-    text = (
-        text.replace("أ", "ا")
-        .replace("إ", "ا")
-        .replace("آ", "ا")
-        .replace("ٱ", "ا")
-        .replace("ى", "ي")
-        .replace("ة", "ه")
-    )
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text,
-    ).strip()
-
-    return text
-
-
-def get_name(item):
-    if isinstance(item, dict):
-        return str(
-            item.get("name")
-            or item.get("title")
-            or ""
-        ).strip()
-
-    return str(item).strip()
-
-
-def get_sura_name(sura):
-    if not isinstance(sura, dict):
-        return ""
-
-    return str(
-        sura.get("name")
-        or sura.get("sura_name")
-        or sura.get("title")
-        or ""
-    ).strip()
-
-
-def get_sura_id(sura):
-    if not isinstance(sura, dict):
-        return None
-
-    for key in (
-        "id",
-        "sura_id",
-        "number",
-    ):
-        value = sura.get(key)
-
-        if value is not None:
-            try:
-                return int(value)
-            except Exception:
-                pass
-
-    return None
+_surah_cache: Dict[int, Dict[str, Any]] = {}
 
 
-def get_moshaf_list(reciter):
-    if not isinstance(reciter, dict):
-        return []
+async def _fetch_surah_raw(surah_number: int) -> Optional[Dict[str, Any]]:
+    """جلب بيانات السورة كاملة من API مع cache."""
+    if surah_number in _surah_cache:
+        return _surah_cache[surah_number]
 
-    moshaf = reciter.get("moshaf")
-
-    if isinstance(moshaf, list):
-        return moshaf
-
-    return []
-
-
-def get_moshaf_server(moshaf):
-    if not isinstance(moshaf, dict):
-        return ""
-
-    return str(
-        moshaf.get("server")
-        or moshaf.get("url")
-        or ""
-    ).strip()
-
-
-def get_moshaf_surah_list(moshaf):
-    if not isinstance(moshaf, dict):
-        return ""
-
-    return str(
-        moshaf.get("surah_list")
-        or moshaf.get("sura_list")
-        or ""
-    ).strip()
-
-
-def get_moshaf_rewaya_id(moshaf):
-    if not isinstance(moshaf, dict):
-        return None
-
-    for key in (
-        "rewaya_id",
-        "riwaya_id",
-        "rewayaId",
-    ):
-        value = moshaf.get(key)
-
-        if value is not None:
-            return str(value).strip()
-
-    return None
-
-
-def get_moshaf_rewaya_name(moshaf):
-    if not isinstance(moshaf, dict):
-        return ""
-
-    for key in (
-        "rewaya",
-        "riwaya",
-        "rewaya_name",
-        "name",
-    ):
-        value = moshaf.get(key)
-
-        if isinstance(value, dict):
-            value = (
-                value.get("name")
-                or value.get("title")
-                or ""
-            )
-
-        if value:
-            return str(value).strip()
-
-    return ""
-
-
-def get_riwaya_id(item):
-    if not isinstance(item, dict):
-        return None
-
-    for key in (
-        "id",
-        "rewaya_id",
-        "riwaya_id",
-    ):
-        value = item.get(key)
-
-        if value is not None:
-            return str(value).strip()
-
-    return None
-
-
-def get_riwaya_name(item):
-    if not isinstance(item, dict):
-        return get_name(item)
-
-    return str(
-        item.get("name")
-        or item.get("title")
-        or item.get("rewaya")
-        or item.get("riwaya")
-        or ""
-    ).strip()
-
-
-# =========================================================
-# API
-# =========================================================
-
-def api_get(endpoint, params=None):
-    url = f"{API_BASE}/{endpoint}"
-
+    url = f"{BASE_URL}/surah/{surah_number}"
     try:
-        response = requests.get(
-            url,
-            params=params or {"language": "ar"},
-            timeout=30,
-        )
-
-        response.raise_for_status()
-
-        return response.json()
-
-    except Exception as e:
-        logging.exception(
-            "API error: %s",
-            e,
-        )
-
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if data.get("code") != 200:
+                return None
+            _surah_cache[surah_number] = data["data"]
+            return data["data"]
+    except (httpx.TimeoutException, httpx.RequestError) as e:
+        logger.warning(f"⚠️ فشل الاتصال بـ API: {e}")
         return None
 
 
-def get_reciters():
-    if _cache["reciters"] is not None:
-        return _cache["reciters"]
-
-    data = api_get(
-        "reciters",
-        {"language": "ar"},
-    )
-
-    if not data:
-        return []
-
-    reciters = data.get(
-        "reciters",
-        [],
-    )
-
-    if not isinstance(reciters, list):
-        reciters = []
-
-    _cache["reciters"] = reciters
-
-    return reciters
-
-
-def get_suras():
-    if _cache["suras"] is not None:
-        return _cache["suras"]
-
-    data = api_get(
-        "suwar",
-        {"language": "ar"},
-    )
-
-    if not data:
-        return []
-
-    suras = data.get(
-        "suwar",
-        [],
-    )
-
-    if not isinstance(suras, list):
-        suras = []
-
-    _cache["suras"] = suras
-
-    return suras
-
-
-def get_riwayat():
-    if _cache["riwayat"] is not None:
-        return _cache["riwayat"]
-
-    data = api_get(
-        "riwayat",
-        {"language": "ar"},
-    )
-
-    if not data:
-        return []
-
-    riwayat = data.get(
-        "riwayat",
-        [],
-    )
-
-    if not isinstance(riwayat, list):
-        riwayat = []
-
-    _cache["riwayat"] = riwayat
-
-    return riwayat
-
-
-# =========================================================
-# ترتيب القراء
-# =========================================================
-
-PREFERRED_RECITERS = [
-    "عبد الباسط عبد الصمد",
-    "مشاري راشد العفاسي",
-    "ماهر المعيقلي",
-    "أحمد العجمي",
-    "ياسر الدوسري",
-    "سعد الغامدي",
-    "عبد الرحمن السديس",
-    "سعود الشريم",
-    "ناصر القطامي",
-    "أبو بكر الشاطري",
-    "محمد صديق المنشاوي",
-    "محمود خليل الحصري",
-    "محمد أيوب",
-    "علي جابر",
-    "عبد الله خياط",
-    "عبد الله بصفر",
-    "خالد الجليل",
-    "فارس عباد",
-    "إدريس أبكر",
-    "صلاح بو خاطر",
-    "هاني الرفاعي",
-    "نبيل الرفاعي",
-    "أحمد الحذيفي",
-]
-
-
-def sort_reciters(reciters):
-    preferred_map = {
-        normalize_text(name): index
-        for index, name in enumerate(
-            PREFERRED_RECITERS
-        )
+async def fetch_surah_info(surah_number: int) -> Optional[Dict[str, Any]]:
+    surah = await _fetch_surah_raw(surah_number)
+    if not surah:
+        return None
+    return {
+        "number": surah["number"],
+        "name": surah["name"],
+        "englishName": surah["englishName"],
+        "revelationType": surah["revelationType"],
+        "numberOfAyahs": surah["numberOfAyahs"],
     }
 
-    def sort_key(reciter):
-        name = get_name(reciter)
-        normalized = normalize_text(name)
 
-        if normalized in preferred_map:
-            return (
-                0,
-                preferred_map[normalized],
-                normalized,
+async def fetch_ayahs_paginated(
+    surah_number: int, page: int = 0, page_size: int = 10
+) -> Optional[Dict[str, Any]]:
+    surah = await _fetch_surah_raw(surah_number)
+    if not surah:
+        return None
+
+    ayahs = surah.get("ayahs", [])
+    total = len(ayahs)
+    start = page * page_size
+    end = min(start + page_size, total)
+
+    verses = []
+    for i in range(start, end):
+        a = ayahs[i]
+        verses.append({
+            "number": i + 1,
+            "text": a.get("text", ""),
+        })
+
+    return {
+        "verses": verses,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+def get_surah_audio_url(surah_number: int, reciter_id: str) -> Optional[str]:
+    """رابط صوت السورة كاملة من mp3quran CDN."""
+    base = RECITER_CDN.get(reciter_id)
+    if not base:
+        return None
+    return f"{base}{surah_number:03d}.mp3"
+
+
+# ============================================================
+#                    تخزين بيانات المستخدم
+# ============================================================
+
+user_data_store: Dict[int, Dict[str, Any]] = {}
+
+
+def get_user_data(user_id: int) -> Dict[str, Any]:
+    if user_id not in user_data_store:
+        user_data_store[user_id] = {
+            "lang": DEFAULT_LANGUAGE,
+            "reciter": RECITERS[0]["id"],
+        }
+    return user_data_store[user_id]
+
+
+# ============================================================
+#                         الكيبوردات
+# ============================================================
+
+def main_menu(lang: str = "ar") -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("📖 المصحف للقراءة", callback_data="read_quran")],
+        [InlineKeyboardButton("🎲 سورة عشوائية", callback_data="random_surah")],
+        [InlineKeyboardButton("🌐 تغيير اللغة", callback_data="change_lang")],
+        [InlineKeyboardButton("🎙️ اختيار القارئ", callback_data="choose_reciter")],
+        [InlineKeyboardButton("📿 أذكار الصباح", callback_data="morning_adhkar")],
+        [InlineKeyboardButton("✨ فضل قراءة القرآن", callback_data="virtues")],
+        [InlineKeyboardButton("📢 قناة البوت", url=CHANNEL_LINK)],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def surah_list_keyboard(page: int = 0, lang: str = "ar") -> InlineKeyboardMarkup:
+    surahs = SURAH_NAMES.get(lang, SURAH_NAMES["ar"])
+    page_size = 10
+    start = page * page_size
+    end = min(start + page_size, len(surahs))
+
+    keyboard = []
+    for i in range(start, end):
+        num = i + 1
+        name = surahs[i]
+        keyboard.append([
+            InlineKeyboardButton(f"{num}. {name}", callback_data=f"surah_{num}")
+        ])
+
+    nav_buttons = []
+    total_pages = (len(surahs) + page_size - 1) // page_size
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"slist_{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("التالي ➡️", callback_data=f"slist_{page+1}"))
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+
+    keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def surah_action_keyboard(surah_number: int) -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("📖 قراءة النص", callback_data=f"read_{surah_number}_0")],
+        [InlineKeyboardButton("🎧 استماع", callback_data=f"play_{surah_number}")],
+        [InlineKeyboardButton("⬇️ تحميل MP3", callback_data=f"dl_{surah_number}")],
+        [InlineKeyboardButton("🔙 رجوع للسور", callback_data="read_quran")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def reciters_keyboard(page: int = 0, selected: str = "") -> InlineKeyboardMarkup:
+    page_size = 8
+    start = page * page_size
+    end = min(start + page_size, len(RECITERS))
+
+    keyboard = []
+    for i in range(start, end):
+        reciter = RECITERS[i]
+        mark = "✅ " if reciter["id"] == selected else ""
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{mark}{reciter['name']}",
+                callback_data=f"setrec_{reciter['id']}",
             )
+        ])
 
-        return (
-            1,
-            normalized,
-        )
+    nav_buttons = []
+    total_pages = (len(RECITERS) + page_size - 1) // page_size
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"rlist_{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("التالي ➡️", callback_data=f"rlist_{page+1}"))
+    if nav_buttons:
+        keyboard.append(nav_buttons)
 
-    return sorted(
-        reciters,
-        key=sort_key,
-    )
-
-
-def unique_reciters(reciters):
-    seen = set()
-    result = []
-
-    for reciter in sort_reciters(reciters):
-        name = get_name(reciter)
-
-        if not name:
-            continue
-
-        key = normalize_text(name)
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        result.append(reciter)
-
-    return result
+    keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
 
 
-# =========================================================
-# لوحة جميع القراء
-# =========================================================
+def lang_keyboard() -> InlineKeyboardMarkup:
+    keyboard = []
+    for code, name in LANGUAGES.items():
+        keyboard.append([InlineKeyboardButton(name, callback_data=f"lang_{code}")])
+    keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
 
-def make_all_reciter_keyboard(reciters):
-    reciters = unique_reciters(
-        reciters
-    )
 
-    names = [
-        get_name(reciter)
-        for reciter in reciters
+def adhkar_keyboard(page: int = 0) -> InlineKeyboardMarkup:
+    page_size = 5
+    total = len(MORNING_ADHKAR)
+    total_pages = (total + page_size - 1) // page_size
+
+    keyboard = []
+    start = page * page_size
+    end = min(start + page_size, total)
+
+    for i in range(start, end):
+        dhikr = MORNING_ADHKAR[i]
+        preview = dhikr["text"][:28] + "..." if len(dhikr["text"]) > 28 else dhikr["text"]
+        keyboard.append([
+            InlineKeyboardButton(f"📿 {preview}", callback_data=f"dhikr_{i}")
+        ])
+
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"alist_{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("التالي ➡️", callback_data=f"alist_{page+1}"))
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+
+    keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def virtues_keyboard(page: int = 0) -> InlineKeyboardMarkup:
+    total = len(VIRTUES)
+    keyboard = []
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"vlist_{page-1}"))
+    if page < total - 1:
+        nav_buttons.append(InlineKeyboardButton("التالي ➡️", callback_data=f"vlist_{page+1}"))
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+    keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def reading_pagination_keyboard(
+    surah_number: int, page: int, total_pages: int
+) -> InlineKeyboardMarkup:
+    keyboard = []
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"read_{surah_number}_{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page+1}/{total_pages}", callback_data="noop"))
+    if page < total_pages - 1:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"read_{surah_number}_{page+1}"))
+    keyboard.append(nav)
+    keyboard.append([InlineKeyboardButton("🎧 استماع", callback_data=f"play_{surah_number}")])
+    keyboard.append([InlineKeyboardButton("🔙 رجوع للسور", callback_data="read_quran")])
+    keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def audio_fallback_keyboard(surah_number: int, audio_url: str) -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("⬇️ تحميل السورة (رابط مباشر)", url=audio_url)],
+        [InlineKeyboardButton("🎙️ تغيير القارئ", callback_data="choose_reciter")],
+        [InlineKeyboardButton("🔙 رجوع للسور", callback_data="read_quran")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
     ]
-
-    rows = []
-
-    for i in range(
-        0,
-        len(names),
-        2,
-    ):
-        rows.append(
-            names[i:i + 2]
-        )
-
-    rows.append(
-        [BTN_BACK, BTN_HOME]
-    )
-
-    rows.append(
-        [BTN_HIDE]
-    )
-
-    return ReplyKeyboardMarkup(
-        rows,
-        resize_keyboard=True,
-        is_persistent=True,
-        one_time_keyboard=False,
-    )
+    return InlineKeyboardMarkup(keyboard)
 
 
-# =========================================================
-# الرسالة الترحيبية
-# =========================================================
+# ============================================================
+#                        المعالجات
+# ============================================================
 
-WELCOME_TEXT = """
-🌿 أهلاً وسهلاً بك في قرآن بوت 🕌
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_data = get_user_data(user.id)
 
-نسأل الله أن يجعل القرآن ربيع قلوبنا ونور صدورنا.
-
-﴿ وَذَكِّرْ فَإِنَّ الذِّكْرَىٰ تَنْفَعُ الْمُؤْمِنِينَ ﴾
-
-قال رسول الله ﷺ:
-«مَن دلَّ على خيرٍ فله مثلُ أجرِ فاعلِه»
-
-اختر ما تريد من القائمة بالأسفل 👇
-"""
-
-
-# =========================================================
-# القائمة الرئيسية
-# =========================================================
-
-async def start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    context.user_data.clear()
-
-    await update.message.reply_text(
-        WELCOME_TEXT,
-        reply_markup=HOME_MARKUP,
-    )
-
-
-async def show_home(
-    update,
-    context,
-):
-    context.user_data.clear()
-
-    await update.message.reply_text(
-        "🏠 القائمة الرئيسية\n\n"
-        "اختر من الأزرار الموجودة بالأسفل 👇",
-        reply_markup=HOME_MARKUP,
-    )
-
-
-# =========================================================
-# إخفاء لوحة الأزرار
-# =========================================================
-
-async def hide_keyboard(
-    update,
-    context,
-):
-    context.user_data.clear()
-
-    await update.message.reply_text(
-        "✅ تم إخفاء لوحة الأزرار.\n\n"
-        "لإظهارها من جديد أرسل /start",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-
-# =========================================================
-# المصحف
-# =========================================================
-
-async def show_quran(
-    update,
-    context,
-):
-    suras = get_suras()
-
-    if not suras:
-        await update.message.reply_text(
-            "⚠️ تعذر تحميل السور حاليًا.",
-            reply_markup=menu_keyboard([]),
-        )
-        return
-
-    context.user_data.clear()
-
-    context.user_data["mode"] = "quran"
-    context.user_data["quran_mode"] = True
-
-    rows = []
-    names = []
-
-    for sura in suras:
-        name = get_sura_name(sura)
-
-        if name:
-            names.append(name)
-
-    for i in range(
-        0,
-        len(names),
-        3,
-    ):
-        rows.append(
-            names[i:i + 3]
-        )
-
-    await update.message.reply_text(
-        "📖 اختر السورة:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-
-# =========================================================
-# فتح السورة في التطبيق المصغر
-# =========================================================
-
-async def open_quran_sura(
-    update,
-    context,
-    sura,
-):
-    sura_id = get_sura_id(sura)
-
-    if not sura_id:
-        await update.message.reply_text(
-            "⚠️ لم أستطع معرفة رقم السورة."
-        )
-        return
-
-    sura_name = get_sura_name(sura)
-
-    # فتح التطبيق المصغر على نفس السورة
-    mini_app_url = (
-        f"{MINI_APP_URL}?surah={sura_id}"
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📖 فتح المصحف",
-                    web_app=WebAppInfo(
-                        url=mini_app_url
-                    ),
-                )
-            ]
-        ]
+    welcome_text = (
+        f"🌙 *بسم الله الرحمن الرحيم*\n\n"
+        f"أهلاً بك يا {user.first_name} في بوت القرآن الكريم 🕌\n\n"
+        f"هذا البوت مخصص لتلاوة وقراءة القرآن الكريم، والأذكار، والفضائل.\n"
+        f"اختر ما تريد من القائمة أدناه 👇\n\n"
+        f"📢 قناة البوت: {CHANNEL_LINK}"
     )
 
     await update.message.reply_text(
-        f"📖 سورة {sura_name}\n\n"
-        "اضغط الزر لفتح السورة في المصحف:",
-        reply_markup=keyboard,
+        welcome_text,
+        reply_markup=main_menu(user_data["lang"]),
+        parse_mode=ParseMode.MARKDOWN,
     )
 
 
-# =========================================================
-# البحث عن السورة
-# =========================================================
-
-def find_sura_by_name(name):
-    target = normalize_text(name)
-
-    for sura in get_suras():
-
-        if normalize_text(
-            get_sura_name(sura)
-        ) == target:
-            return sura
-
-    return None
-
-
-# =========================================================
-# القراء
-# =========================================================
-
-async def show_reciters(
-    update,
-    context,
-    mode="reciters",
-    title="🎙️ اختر القارئ:",
-):
-    reciters = unique_reciters(
-        get_reciters()
-    )
-
-    if not reciters:
-        await update.message.reply_text(
-            "⚠️ تعذر تحميل قائمة القراء حاليًا.",
-            reply_markup=menu_keyboard([]),
-        )
-        return
-
-    context.user_data["mode"] = mode
-    context.user_data["quran_mode"] = False
-    context.user_data["reciter_list"] = reciters
-
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data = get_user_data(update.effective_user.id)
     await update.message.reply_text(
-        f"{title}\n\n"
-        f"عدد القراء المتاحين: {len(reciters)}",
-        reply_markup=make_all_reciter_keyboard(
-            reciters
-        ),
+        "🕌 استخدم الأزرار للتنقل في القائمة.",
+        reply_markup=main_menu(user_data["lang"]),
     )
 
 
-# =========================================================
-# اختيار سريع
-# =========================================================
-
-async def show_quick(
-    update,
-    context,
-):
-    context.user_data.clear()
-    context.user_data["mode"] = "quick"
-    context.user_data["quran_mode"] = False
-
-    letters = [
-        "ا",
-        "ب",
-        "ت",
-        "ث",
-        "ج",
-        "ح",
-        "خ",
-        "د",
-        "ذ",
-        "ر",
-        "ز",
-        "س",
-        "ش",
-        "ص",
-        "ض",
-        "ط",
-        "ظ",
-        "ع",
-        "غ",
-        "ف",
-        "ق",
-        "ك",
-        "ل",
-        "م",
-        "ن",
-        "ه",
-        "و",
-        "ي",
-    ]
-
-    rows = []
-
-    for i in range(
-        0,
-        len(letters),
-        5,
-    ):
-        rows.append(
-            letters[i:i + 5]
-        )
-
-    await update.message.reply_text(
-        "⚡ اختيار سريع\n\n"
-        "اختر أول حرف من اسم القارئ:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-
-async def quick_letter(
-    update,
-    context,
-    letter,
-):
-    reciters = unique_reciters(
-        get_reciters()
-    )
-
-    normalized_letter = normalize_text(
-        letter
-    )
-
-    matched = []
-
-    for reciter in reciters:
-
-        name = normalize_text(
-            get_name(reciter)
-        )
-
-        if name.startswith(
-            normalized_letter
-        ):
-            matched.append(reciter)
-
-    if not matched:
-        await update.message.reply_text(
-            "❌ لم أجد قارئًا بهذا الحرف.",
-            reply_markup=menu_keyboard([]),
-        )
-        return
-
-    context.user_data["mode"] = (
-        "quick_reciter"
-    )
-
-    context.user_data["quran_mode"] = False
-
-    context.user_data[
-        "reciter_list"
-    ] = matched
-
-    await update.message.reply_text(
-        f"⚡ القراء الذين يبدأ اسمهم "
-        f"بحرف «{letter}»:",
-        reply_markup=make_all_reciter_keyboard(
-            matched
-        ),
-    )
-
-
-# =========================================================
-# الاختيار المتقدم
-# =========================================================
-
-async def show_advanced(
-    update,
-    context,
-):
-    context.user_data.clear()
-
-    await show_reciters(
-        update,
-        context,
-        mode="advanced_reciter",
-        title="⚙️ اختيار متقدم\n\nاختر القارئ:",
-    )
-
-
-# =========================================================
-# إيجاد القارئ
-# =========================================================
-
-def find_reciter_by_name(
-    name,
-    reciters=None,
-):
-    target = normalize_text(name)
-
-    if reciters is None:
-        reciters = get_reciters()
-
-    for reciter in reciters:
-
-        if normalize_text(
-            get_name(reciter)
-        ) == target:
-            return reciter
-
-    return None
-
-
-# =========================================================
-# مطابقة الرواية مع المصحف
-# =========================================================
-
-def moshaf_matches_riwaya(
-    moshaf,
-    selected_id,
-    selected_name,
-):
-    moshaf_id = get_moshaf_rewaya_id(
-        moshaf
-    )
-
-    moshaf_name = normalize_text(
-        get_moshaf_rewaya_name(
-            moshaf
-        )
-    )
-
-    wanted_name = normalize_text(
-        selected_name
-    )
-
-    if selected_id and moshaf_id:
-
-        if str(moshaf_id) == str(
-            selected_id
-        ):
-            return True
-
-    if wanted_name and moshaf_name:
-
-        if wanted_name == moshaf_name:
-            return True
-
-        if wanted_name in moshaf_name:
-            return True
-
-        if moshaf_name in wanted_name:
-            return True
-
-    return False
-
-
-# =========================================================
-# الروايات
-# =========================================================
-
-async def show_riwayat(
-    update,
-    context,
-):
-    riwayat = get_riwayat()
-
-    if not riwayat:
-        await update.message.reply_text(
-            "⚠️ تعذر تحميل الروايات حاليًا.",
-            reply_markup=menu_keyboard([]),
-        )
-        return
-
-    context.user_data.clear()
-
-    context.user_data["mode"] = "riwaya"
-    context.user_data["quran_mode"] = False
-
-    names = []
-
-    for item in riwayat:
-
-        name = get_riwaya_name(item)
-
-        if name:
-            names.append(name)
-
-    rows = []
-
-    for i in range(
-        0,
-        len(names),
-        2,
-    ):
-        rows.append(
-            names[i:i + 2]
-        )
-
-    await update.message.reply_text(
-        "📜 اختر الرواية:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-
-async def handle_riwaya_selected(
-    update,
-    context,
-    name,
-):
-    riwayat = get_riwayat()
-
-    selected = None
-
-    for item in riwayat:
-
-        if normalize_text(
-            get_riwaya_name(item)
-        ) == normalize_text(name):
-
-            selected = item
+async def send_audio_smart(query, surah_number: int, user_data: Dict[str, Any]):
+    """
+    إرسال الصوت بطريقة ذكية:
+    - السور الطويلة → document (يدعم حتى 2GB)
+    - السور القصيرة → audio عادي
+    - عند الفشل → رابط تحميل مباشر
+    """
+    reciter_id = user_data["reciter"]
+    reciter_name = reciter_id
+    for r in RECITERS:
+        if r["id"] == reciter_id:
+            reciter_name = r["name"]
             break
 
-    if selected is None:
-        await update.message.reply_text(
-            "⚠️ لم أجد هذه الرواية.",
-            reply_markup=menu_keyboard([]),
+    audio_url = get_surah_audio_url(surah_number, reciter_id)
+    surah_name = SURAH_NAMES["ar"][surah_number - 1]
+
+    if not audio_url:
+        await query.edit_message_text(
+            f"❌ القارئ *{reciter_name}* غير متوفر للاستماع حالياً.\n"
+            f"جرّب قارئاً آخر من قائمة القراء.",
+            reply_markup=surah_action_keyboard(surah_number),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return
 
-    selected_id = get_riwaya_id(
-        selected
-    )
-
-    selected_name = get_riwaya_name(
-        selected
-    )
-
-    matching = []
-
-    for reciter in get_reciters():
-
-        moshafs = get_moshaf_list(
-            reciter
-        )
-
-        for moshaf in moshafs:
-
-            if moshaf_matches_riwaya(
-                moshaf,
-                selected_id,
-                selected_name,
-            ):
-                matching.append(reciter)
-                break
-
-    matching = unique_reciters(
-        matching
-    )
-
-    context.user_data[
-        "selected_riwaya_id"
-    ] = selected_id
-
-    context.user_data[
-        "selected_riwaya_name"
-    ] = selected_name
-
-    context.user_data[
-        "mode"
-    ] = "riwaya_reciter"
-
-    context.user_data[
-        "quran_mode"
-    ] = False
-
-    context.user_data[
-        "reciter_list"
-    ] = matching
-
-    if not matching:
-        await update.message.reply_text(
-            f"📜 الرواية: {selected_name}\n\n"
-            "⚠️ لم أجد قراء مرتبطين "
-            "بهذه الرواية في المصدر الحالي.",
-            reply_markup=menu_keyboard([]),
-        )
-        return
-
-    await update.message.reply_text(
-        f"📜 الرواية: {selected_name}\n\n"
-        f"🎙️ اختر القارئ:\n"
-        f"عدد القراء: {len(matching)}",
-        reply_markup=make_all_reciter_keyboard(
-            matching
-        ),
-    )
-
-
-# =========================================================
-# اختيار القارئ
-# =========================================================
-
-async def handle_reciter_selected(
-    update,
-    context,
-):
-    name = update.message.text
-
-    reciters = context.user_data.get(
-        "reciter_list"
-    )
-
-    if not reciters:
-        reciters = get_reciters()
-
-    reciter = find_reciter_by_name(
-        name,
-        reciters,
-    )
-
-    if not reciter:
-        return False
-
-    moshafs = get_moshaf_list(
-        reciter
-    )
-
-    if not moshafs:
-        await update.message.reply_text(
-            "⚠️ لا توجد مصاحف صوتية متاحة لهذا القارئ.",
-            reply_markup=menu_keyboard([]),
-        )
-        return True
-
-    selected_riwaya_id = (
-        context.user_data.get(
-            "selected_riwaya_id"
-        )
-    )
-
-    selected_riwaya_name = (
-        context.user_data.get(
-            "selected_riwaya_name"
-        )
-    )
-
-    if (
-        selected_riwaya_id
-        or selected_riwaya_name
-    ):
-
-        filtered = [
-            moshaf
-            for moshaf in moshafs
-            if moshaf_matches_riwaya(
-                moshaf,
-                selected_riwaya_id,
-                selected_riwaya_name,
-            )
-        ]
-
-        if filtered:
-            moshafs = filtered
-
-    context.user_data[
-        "selected_reciter"
-    ] = reciter
-
-    context.user_data[
-        "moshaf_list"
-    ] = moshafs
-
-    context.user_data[
-        "mode"
-    ] = "moshaf"
-
-    context.user_data[
-        "quran_mode"
-    ] = False
-
-    names = []
-
-    for moshaf in moshafs:
-
-        moshaf_name = (
-            get_moshaf_rewaya_name(
-                moshaf
-            )
-            or moshaf.get("name")
-            or "مصحف صوتي"
-        )
-
-        names.append(
-            str(moshaf_name)
-        )
-
-    rows = []
-
-    for i in range(
-        0,
-        len(names),
-        2,
-    ):
-        rows.append(
-            names[i:i + 2]
-        )
-
-    await update.message.reply_text(
-        f"🎙️ القارئ: "
-        f"{get_name(reciter)}\n\n"
-        "📜 اختر الرواية / المصحف:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-    return True
-
-
-# =========================================================
-# اختيار المصحف الصوتي
-# =========================================================
-
-def find_moshaf_by_name(
-    name,
-    moshafs,
-):
-    target = normalize_text(name)
-
-    for moshaf in moshafs:
-
-        moshaf_name = (
-            get_moshaf_rewaya_name(
-                moshaf
-            )
-            or moshaf.get("name")
-            or "مصحف صوتي"
-        )
-
-        if normalize_text(
-            moshaf_name
-        ) == target:
-
-            return moshaf
-
-    return None
-
-
-async def handle_moshaf_selected(
-    update,
-    context,
-):
-    name = update.message.text
-
-    moshafs = context.user_data.get(
-        "moshaf_list",
-        [],
-    )
-
-    moshaf = find_moshaf_by_name(
-        name,
-        moshafs,
-    )
-
-    if not moshaf:
-        return False
-
-    context.user_data[
-        "selected_moshaf"
-    ] = moshaf
-
-    context.user_data[
-        "mode"
-    ] = "sura"
-
-    context.user_data[
-        "quran_mode"
-    ] = False
-
-    suras = get_suras()
-
-    allowed = get_moshaf_surah_list(
-        moshaf
-    )
-
-    allowed_ids = set()
-
-    if allowed:
-
-        for value in re.split(
-            r"[,\s]+",
-            allowed,
-        ):
-            value = value.strip()
-
-            if value.isdigit():
-                allowed_ids.add(
-                    int(value)
-                )
-
-    names = []
-
-    for sura in suras:
-
-        sid = get_sura_id(sura)
-
-        if (
-            allowed_ids
-            and sid not in allowed_ids
-        ):
-            continue
-
-        name = get_sura_name(sura)
-
-        if name:
-            names.append(name)
-
-    rows = []
-
-    for i in range(
-        0,
-        len(names),
-        3,
-    ):
-        rows.append(
-            names[i:i + 3]
-        )
-
-    reciter = context.user_data.get(
-        "selected_reciter"
-    )
-
-    await update.message.reply_text(
-        f"🎙️ {get_name(reciter)}\n\n"
-        "📖 اختر السورة:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-    return True
-
-
-# =========================================================
-# إرسال السورة الصوتية
-# =========================================================
-#
-# التعديل: بدل ما نوقف الإرسال بالكامل عند تجاوز حجم
-# الملف 50MB (حد Bot API العادي)، نرسل للمستخدم رابط
-# تحميل مباشر للملف + زر فتح المصحف، بدل رسالة خطأ فقط.
-# نفحص الحجم أولاً عبر HEAD request لتوفير وقت وبيانات،
-# ونبقي الفحص أثناء التنزيل كخط دفاع ثانٍ لو لم يتوفر
-# Content-Length من السيرفر المصدر.
-# =========================================================
-
-async def send_surah_audio(
-    update,
-    context,
-    sura,
-):
-    reciter = context.user_data.get(
-        "selected_reciter"
-    )
-
-    moshaf = context.user_data.get(
-        "selected_moshaf"
-    )
-
-    if not reciter or not moshaf:
-        await update.message.reply_text(
-            "⚠️ حدث خطأ في الاختيار."
-        )
-        return
-
-    server = get_moshaf_server(
-        moshaf
-    )
-
-    sura_id = get_sura_id(
-        sura
-    )
-
-    if not server or not sura_id:
-        await update.message.reply_text(
-            "⚠️ الرابط الصوتي غير متوفر لهذه السورة."
-        )
-        return
-
-    server = (
-        server.rstrip("/")
-        + "/"
-    )
-
-    filename = f"{sura_id:03d}.mp3"
-
-    url = server + filename
-
-    await update.message.reply_text(
-        f"⏳ جاري تجهيز سورة "
-        f"{get_sura_name(sura)}..."
-    )
-
-    mini_app_url = (
-        f"{MINI_APP_URL}?surah={sura_id}"
-    )
-
-    caption = (
-        f"🎙️ {get_name(reciter)}\n"
-        f"📜 "
-        f"{get_moshaf_rewaya_name(moshaf) or 'مصحف'}\n"
-        f"📖 سورة "
-        f"{get_sura_name(sura)}"
-    )
-
-    open_quran_button = InlineKeyboardButton(
-        "📖 فتح المصحف",
-        web_app=WebAppInfo(
-            url=mini_app_url
-        ),
-    )
-
-    def big_file_keyboard():
-        return InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "⬇️ تحميل السورة (رابط مباشر)",
-                        url=url,
-                    )
-                ],
-                [open_quran_button],
-            ]
-        )
-
-    # ---------------------------------------------------
-    # 1) فحص الحجم مسبقًا عبر HEAD قبل أي تحميل
-    # ---------------------------------------------------
-
-    known_size = None
-
-    try:
-        head_response = requests.head(
-            url,
-            timeout=15,
-            allow_redirects=True,
-        )
-
-        content_length = head_response.headers.get(
-            "Content-Length"
-        )
-
-        if content_length and content_length.isdigit():
-            known_size = int(content_length)
-
-    except Exception:
-        logging.exception(
-            "HEAD request failed for %s",
-            url,
-        )
-
-    if known_size and known_size > MAX_AUDIO_BYTES:
-
-        await update.message.reply_text(
-            f"{caption}\n\n"
-            "⚠️ حجم هذا الملف كبير ولا يمكن إرساله "
-            "مباشرة داخل تيليجرام حاليًا، "
-            "لكن يمكنك تحميله من الرابط بالأسفل:",
-            reply_markup=big_file_keyboard(),
-        )
-
-        return
-
-    # ---------------------------------------------------
-    # 2) التحميل الفعلي مع فحص الحجم أثناء البث كخط دفاع ثانٍ
-    # ---------------------------------------------------
-
-    try:
-
-        response = requests.get(
-            url,
-            timeout=90,
-            stream=True,
-        )
-
-        response.raise_for_status()
-
-        total = 0
-        chunks = []
-        exceeded = False
-
-        for chunk in response.iter_content(
-            chunk_size=1024 * 256
-        ):
-
-            if not chunk:
-                continue
-
-            total += len(chunk)
-
-            if total > MAX_AUDIO_BYTES:
-                exceeded = True
-                break
-
-            chunks.append(chunk)
-
-        if exceeded:
-
-            await update.message.reply_text(
-                f"{caption}\n\n"
-                "⚠️ حجم هذا الملف كبير ولا يمكن إرساله "
-                "مباشرة داخل تيليجرام حاليًا، "
-                "لكن يمكنك تحميله من الرابط بالأسفل:",
-                reply_markup=big_file_keyboard(),
-            )
-
-            return
-
-        audio_data = b"".join(
-            chunks
-        )
-
-        if not audio_data:
-            raise ValueError(
-                "Empty audio response"
-            )
-
-        audio = io.BytesIO(
-            audio_data
-        )
-
-        audio.name = (
-            f"{get_sura_name(sura)}.mp3"
-        )
-
-        keyboard = InlineKeyboardMarkup(
-            [
-                [open_quran_button]
-            ]
-        )
-
-        await update.message.reply_audio(
-            audio=audio,
-            caption=caption,
-            reply_markup=keyboard,
-        )
-
-    except Exception as e:
-
-        logging.exception(
-            "Audio error: %s",
-            e,
-        )
-
-        # حتى لو فشل التحميل لأي سبب آخر، أعطِ المستخدم
-        # رابط مباشر بدل رسالة خطأ بدون أي حل.
-        await update.message.reply_text(
-            f"{caption}\n\n"
-            "❌ تعذر تحميل السورة داخل البوت حاليًا.\n"
-            "يمكنك تحميلها مباشرة من الرابط بالأسفل:",
-            reply_markup=big_file_keyboard(),
-        )
-
-
-# =========================================================
-# اختيار السورة الصوتية
-# =========================================================
-
-async def handle_sura_selected(
-    update,
-    context,
-):
-    name = update.message.text
-
-    sura = find_sura_by_name(
-        name
-    )
-
-    if not sura:
-        return False
-
-    await send_surah_audio(
-        update,
-        context,
-        sura,
-    )
-
-    return True
-
-
-# =========================================================
-# العشوائي
-# =========================================================
-
-async def show_random(
-    update,
-    context,
-):
-    context.user_data.clear()
-
-    context.user_data[
-        "quran_mode"
-    ] = False
-
-    reciters = unique_reciters(
-        get_reciters()
-    )
-
-    valid_reciters = []
-
-    for reciter in reciters:
-
-        moshafs = get_moshaf_list(
-            reciter
-        )
-
-        good_moshafs = [
-            m
-            for m in moshafs
-            if get_moshaf_server(m)
-        ]
-
-        if good_moshafs:
-            valid_reciters.append(
-                (
-                    reciter,
-                    good_moshafs,
-                )
-            )
-
-    if not valid_reciters:
-        await update.message.reply_text(
-            "⚠️ لا توجد تلاوات متاحة حاليًا."
-        )
-        return
-
-    reciter, moshafs = random.choice(
-        valid_reciters
-    )
-
-    moshaf = random.choice(
-        moshafs
-    )
-
-    suras = get_suras()
-
-    allowed = get_moshaf_surah_list(
-        moshaf
-    )
-
-    allowed_ids = set()
-
-    if allowed:
-
-        for value in re.split(
-            r"[,\s]+",
-            allowed,
-        ):
-
-            if value.isdigit():
-                allowed_ids.add(
-                    int(value)
-                )
-
-    valid_suras = []
-
-    for sura in suras:
-
-        sid = get_sura_id(
-            sura
-        )
-
-        if (
-            not allowed_ids
-            or sid in allowed_ids
-        ):
-            valid_suras.append(
-                sura
-            )
-
-    if not valid_suras:
-        valid_suras = suras
-
-    sura = random.choice(
-        valid_suras
-    )
-
-    context.user_data[
-        "selected_reciter"
-    ] = reciter
-
-    context.user_data[
-        "selected_moshaf"
-    ] = moshaf
-
-    await send_surah_audio(
-        update,
-        context,
-        sura,
-    )
-
-
-# =========================================================
-# الأذكار
-# =========================================================
-
-MORNING_TEXT = """
-🌅 أذكار الصباح
-
-أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.
-
-اللهم بك أصبحنا وبك أمسينا، وبك نحيا وبك نموت وإليك النشور.
-
-رضيت بالله ربًا، وبالإسلام دينًا، وبمحمد ﷺ نبيًا.
-
-سبحان الله وبحمده.
-"""
-
-
-EVENING_TEXT = """
-🌙 أذكار المساء
-
-أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.
-
-اللهم بك أمسينا وبك أصبحنا، وبك نحيا وبك نموت وإليك المصير.
-
-رضيت بالله ربًا، وبالإسلام دينًا، وبمحمد ﷺ نبيًا.
-
-سبحان الله وبحمده.
-"""
-
-
-async def show_morning(
-    update,
-    context,
-):
-    await update.message.reply_text(
-        MORNING_TEXT,
-        reply_markup=menu_keyboard([]),
-    )
-
-    if MORNING_AUDIO.exists():
-
-        try:
-
-            with MORNING_AUDIO.open(
-                "rb"
-            ) as audio:
-
-                await update.message.reply_audio(
-                    audio=audio,
-                    caption="🌅 أذكار الصباح",
-                )
-
-        except Exception:
-
-            logging.exception(
-                "Morning audio error"
-            )
-
-
-async def show_evening(
-    update,
-    context,
-):
-    await update.message.reply_text(
-        EVENING_TEXT,
-        reply_markup=menu_keyboard([]),
-    )
-
-    if EVENING_AUDIO.exists():
-
-        try:
-
-            with EVENING_AUDIO.open(
-                "rb"
-            ) as audio:
-
-                await update.message.reply_audio(
-                    audio=audio,
-                    caption="🌙 أذكار المساء",
-                )
-
-        except Exception:
-
-            logging.exception(
-                "Evening audio error"
-            )
-
-
-# =========================================================
-# تفسير القرآن
-# =========================================================
-
-async def show_tafsir(
-    update,
-    context,
-):
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📚 فتح تفسير القرآن",
-                    url=TAFSIR_URL,
-                )
-            ]
-        ]
-    )
-
-    await update.message.reply_text(
-        "📚 تفسير القرآن\n\n"
-        "يمكنك فتح موسوعة القرآن والتفاسير "
-        "من الزر بالأسفل:",
-        reply_markup=keyboard,
-    )
-
-
-# =========================================================
-# الدرر السنية
-# =========================================================
-
-async def show_dorar(
-    update,
-    context,
-):
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📜 فتح الموسوعة الحديثية",
-                    url=DORAR_URL,
-                )
-            ]
-        ]
-    )
-
-    await update.message.reply_text(
-        "📜 الدرر السنية\n\n"
-        "الموسوعة الحديثية للبحث "
-        "والتحقق من الأحاديث:",
-        reply_markup=keyboard,
-    )
-
-
-# =========================================================
-# القناة
-# =========================================================
-
-async def show_channel(
-    update,
-    context,
-):
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📢 الانتقال إلى قناتنا",
-                    url=CHANNEL_URL,
-                )
-            ]
-        ]
-    )
-
-    await update.message.reply_text(
-        "📢 قناتنا على تيليجرام:",
-        reply_markup=keyboard,
-    )
-
-
-# =========================================================
-# اللغة
-# =========================================================
-
-async def show_language(
-    update,
-    context,
-):
-    rows = [
-        ["🇸🇦 العربية"],
-        ["🇬🇧 English"],
-    ]
-
-    await update.message.reply_text(
-        "🌐 اختر اللغة:",
-        reply_markup=menu_keyboard(rows),
-    )
-
-
-# =========================================================
-# الرجوع
-# =========================================================
-
-async def go_back(
-    update,
-    context,
-):
-    mode = context.user_data.get(
-        "mode"
-    )
-
-    if mode == "sura":
-
-        if context.user_data.get(
-            "quran_mode"
-        ):
-
-            await show_home(
-                update,
-                context,
-            )
-
-            return
-
-        await show_reciters(
-            update,
-            context,
-            mode="reciters",
-            title="🎙️ اختر القارئ:",
-        )
-
-        return
-
-    if mode == "moshaf":
-
-        await show_reciters(
-            update,
-            context,
-            mode="reciters",
-            title="🎙️ اختر القارئ:",
-        )
-
-        return
-
-    if mode in (
-        "advanced_reciter",
-        "quick_reciter",
-        "riwaya_reciter",
-    ):
-
-        await show_home(
-            update,
-            context,
-        )
-
-        return
-
-    if mode == "quick":
-
-        await show_home(
-            update,
-            context,
-        )
-
-        return
-
-    if mode in (
-        "quran",
-        "riwaya",
-    ):
-
-        await show_home(
-            update,
-            context,
-        )
-
-        return
-
-    await show_home(
-        update,
-        context,
-    )
-
-
-# =========================================================
-# معالج الرسائل الرئيسي
-# =========================================================
-
-async def handle_message(
-    update,
-    context,
-):
-    text = (
-        update.message.text or ""
-    ).strip()
-
-    # =====================================================
-    # إخفاء القائمة
-    # =====================================================
-
-    if text == BTN_HIDE:
-
-        await hide_keyboard(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # الرئيسية
-    # =====================================================
-
-    if text == BTN_HOME:
-
-        await show_home(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # رجوع
-    # =====================================================
-
-    if text == BTN_BACK:
-
-        await go_back(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # أزرار القائمة الرئيسية
-    # =====================================================
-
-    if text == BTN_QURAN:
-
-        await show_quran(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_RECITERS:
-
-        await show_reciters(
-            update,
-            context,
-            mode="reciters",
-            title="🎙️ اختر القارئ:",
-        )
-
-        return
-
-    if text == BTN_REWAYAT:
-
-        await show_riwayat(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_RANDOM:
-
-        await show_random(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_QUICK:
-
-        await show_quick(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_ADVANCED:
-
-        await show_advanced(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_MORNING:
-
-        await show_morning(
-            update,
-            context,
-        )
-
-        return
-
-    if text == BTN_EVENING:
-
-        await show_evening(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # تفسير القرآن
-    # =====================================================
-
-    if text == BTN_TAFSIR:
-
-        await show_tafsir(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # الدرر السنية
-    # =====================================================
-
-    if text == BTN_DORAR:
-
-        await show_dorar(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # القناة
-    # =====================================================
-
-    if text == BTN_CHANNEL:
-
-        await show_channel(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # اللغة
-    # =====================================================
-
-    if text == BTN_LANGUAGE:
-
-        await show_language(
-            update,
-            context,
-        )
-
-        return
-
-    # =====================================================
-    # الحالة الحالية
-    # =====================================================
-
-    mode = context.user_data.get(
-        "mode"
-    )
-
-    # =====================================================
-    # المصحف
-    #
-    # اختيار السورة هنا يفتح التطبيق المصغر
-    # مباشرة على نفس السورة.
-    # =====================================================
-
-    if mode == "quran":
-
-        sura = find_sura_by_name(
-            text
-        )
-
-        if sura:
-
-            await open_quran_sura(
-                update,
-                context,
-                sura,
-            )
-
-            return
-
-    # =====================================================
-    # اختيار الرواية
-    # =====================================================
-
-    if mode == "riwaya":
-
-        await handle_riwaya_selected(
-            update,
-            context,
-            text,
-        )
-
-        return
-
-    # =====================================================
-    # اختيار القارئ
-    # =====================================================
-
-    if mode in (
-        "reciters",
-        "quick_reciter",
-        "advanced_reciter",
-        "riwaya_reciter",
-    ):
-
-        handled = (
-            await handle_reciter_selected(
-                update,
-                context,
-            )
-        )
-
-        if handled:
-            return
-
-    # =====================================================
-    # اختيار المصحف الصوتي
-    # =====================================================
-
-    if mode == "moshaf":
-
-        handled = (
-            await handle_moshaf_selected(
-                update,
-                context,
-            )
-        )
-
-        if handled:
-            return
-
-    # =====================================================
-    # اختيار السورة الصوتية
-    # =====================================================
-
-    if mode == "sura":
-
-        handled = (
-            await handle_sura_selected(
-                update,
-                context,
-            )
-        )
-
-        if handled:
-            return
-
-    # =====================================================
-    # اختيار حرف الاختيار السريع
-    # =====================================================
-
-    if mode == "quick":
-
-        letters = {
-            "ا", "ب", "ت", "ث",
-            "ج", "ح", "خ", "د",
-            "ذ", "ر", "ز", "س",
-            "ش", "ص", "ض", "ط",
-            "ظ", "ع", "غ", "ف",
-            "ق", "ك", "ل", "م",
-            "ن", "ه", "و", "ي",
-        }
-
-        if text in letters:
-
-            await quick_letter(
-                update,
-                context,
-                text,
-            )
-
-            return
-
-    # =====================================================
-    # اللغة
-    # =====================================================
-
-    if text == "🇸🇦 العربية":
-
-        await update.message.reply_text(
-            "🇸🇦 تم اختيار اللغة العربية.",
-            reply_markup=HOME_MARKUP,
-        )
-
-        return
-
-    if text == "🇬🇧 English":
-
-        await update.message.reply_text(
-            "🇬🇧 English language selection "
-            "will be added to the next version.",
-            reply_markup=HOME_MARKUP,
-        )
-
-        return
-
-    # =====================================================
-    # رسالة افتراضية
-    # =====================================================
-
-    await update.message.reply_text(
-        "اختر أحد الأزرار الموجودة بالأسفل 👇",
-        reply_markup=HOME_MARKUP,
-    )
-
-
-# =========================================================
-# معالجة الأخطاء
-# =========================================================
-
-async def error_handler(
-    update,
-    context,
-):
-    logging.exception(
-        "Unhandled exception",
-        exc_info=context.error,
-    )
-
-
-# =========================================================
-# تشغيل البوت
-# =========================================================
-
-def main():
-
-    if not BOT_TOKEN:
-        raise RuntimeError(
-            "BOT_TOKEN is missing."
-        )
-
-    logging.basicConfig(
-        format=(
-            "%(asctime)s - "
-            "%(name)s - "
-            "%(levelname)s - "
-            "%(message)s"
-        ),
-        level=logging.INFO,
-    )
-
-    application = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .build()
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
-
-    application.add_handler(
-        MessageHandler(
-            filters.TEXT
-            & ~filters.COMMAND,
-            handle_message,
-        )
-    )
-
-    application.add_error_handler(
-        error_handler
-    )
-
-    logging.info(
-        "Bot is starting..."
-    )
-
-    application.run_polling(
-        drop_pending_updates=True
-    )
-
-
-if __name__ == "__main__":
-    main()
+    await query.edit_message_text
