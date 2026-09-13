@@ -670,7 +670,7 @@ WELCOME_TEXT = """
 ﴿ وَذَكِّرْ فَإِنَّ الذِّكْرَىٰ تَنْفَعُ الْمُؤْمِنِينَ ﴾
 
 قال رسول الله ﷺ:
-«مَن دلَّ على خيرٍ فله مثلُ أجرِ فاعلِه»
+«مَن دلَّ على خيرٍ فله مثلُ أجرِ فاعلِه»
 
 اختر ما تريد من القائمة بالأسفل 👇
 """
@@ -1447,6 +1447,14 @@ async def handle_moshaf_selected(
 # =========================================================
 # إرسال السورة الصوتية
 # =========================================================
+#
+# التعديل: بدل ما نوقف الإرسال بالكامل عند تجاوز حجم
+# الملف 50MB (حد Bot API العادي)، نرسل للمستخدم رابط
+# تحميل مباشر للملف + زر فتح المصحف، بدل رسالة خطأ فقط.
+# نفحص الحجم أولاً عبر HEAD request لتوفير وقت وبيانات،
+# ونبقي الفحص أثناء التنزيل كخط دفاع ثانٍ لو لم يتوفر
+# Content-Length من السيرفر المصدر.
+# =========================================================
 
 async def send_surah_audio(
     update,
@@ -1495,6 +1503,80 @@ async def send_surah_audio(
         f"{get_sura_name(sura)}..."
     )
 
+    mini_app_url = (
+        f"{MINI_APP_URL}?surah={sura_id}"
+    )
+
+    caption = (
+        f"🎙️ {get_name(reciter)}\n"
+        f"📜 "
+        f"{get_moshaf_rewaya_name(moshaf) or 'مصحف'}\n"
+        f"📖 سورة "
+        f"{get_sura_name(sura)}"
+    )
+
+    open_quran_button = InlineKeyboardButton(
+        "📖 فتح المصحف",
+        web_app=WebAppInfo(
+            url=mini_app_url
+        ),
+    )
+
+    def big_file_keyboard():
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "⬇️ تحميل السورة (رابط مباشر)",
+                        url=url,
+                    )
+                ],
+                [open_quran_button],
+            ]
+        )
+
+    # ---------------------------------------------------
+    # 1) فحص الحجم مسبقًا عبر HEAD قبل أي تحميل
+    # ---------------------------------------------------
+
+    known_size = None
+
+    try:
+        head_response = requests.head(
+            url,
+            timeout=15,
+            allow_redirects=True,
+        )
+
+        content_length = head_response.headers.get(
+            "Content-Length"
+        )
+
+        if content_length and content_length.isdigit():
+            known_size = int(content_length)
+
+    except Exception:
+        logging.exception(
+            "HEAD request failed for %s",
+            url,
+        )
+
+    if known_size and known_size > MAX_AUDIO_BYTES:
+
+        await update.message.reply_text(
+            f"{caption}\n\n"
+            "⚠️ حجم هذا الملف كبير ولا يمكن إرساله "
+            "مباشرة داخل تيليجرام حاليًا، "
+            "لكن يمكنك تحميله من الرابط بالأسفل:",
+            reply_markup=big_file_keyboard(),
+        )
+
+        return
+
+    # ---------------------------------------------------
+    # 2) التحميل الفعلي مع فحص الحجم أثناء البث كخط دفاع ثانٍ
+    # ---------------------------------------------------
+
     try:
 
         response = requests.get(
@@ -1507,6 +1589,7 @@ async def send_surah_audio(
 
         total = 0
         chunks = []
+        exceeded = False
 
         for chunk in response.iter_content(
             chunk_size=1024 * 256
@@ -1517,22 +1600,23 @@ async def send_surah_audio(
 
             total += len(chunk)
 
-            # يبقى السقف موجودًا لأن Bot API العادي
-            # لا يقبل رفع ملف صوتي أكبر من 50MB.
             if total > MAX_AUDIO_BYTES:
-
-                await update.message.reply_text(
-                    "⚠️ حجم هذه السورة أكبر من "
-                    "الحد المسموح به لإرسال الملفات "
-                    "عبر البوت حاليًا.\n\n"
-                    "السورة محفوظة كملف واحد، "
-                    "لكن إرسال الملفات الأكبر من 50MB "
-                    "يحتاج إلى Local Bot API Server."
-                )
-
-                return
+                exceeded = True
+                break
 
             chunks.append(chunk)
+
+        if exceeded:
+
+            await update.message.reply_text(
+                f"{caption}\n\n"
+                "⚠️ حجم هذا الملف كبير ولا يمكن إرساله "
+                "مباشرة داخل تيليجرام حاليًا، "
+                "لكن يمكنك تحميله من الرابط بالأسفل:",
+                reply_markup=big_file_keyboard(),
+            )
+
+            return
 
         audio_data = b"".join(
             chunks
@@ -1551,32 +1635,9 @@ async def send_surah_audio(
             f"{get_sura_name(sura)}.mp3"
         )
 
-        caption = (
-            f"🎙️ {get_name(reciter)}\n"
-            f"📜 "
-            f"{get_moshaf_rewaya_name(moshaf) or 'مصحف'}\n"
-            f"📖 سورة "
-            f"{get_sura_name(sura)}"
-        )
-
-        # =================================================
-        # زر فتح التطبيق المصغر على نفس السورة
-        # =================================================
-
-        mini_app_url = (
-            f"{MINI_APP_URL}?surah={sura_id}"
-        )
-
         keyboard = InlineKeyboardMarkup(
             [
-                [
-                    InlineKeyboardButton(
-                        "📖 فتح المصحف",
-                        web_app=WebAppInfo(
-                            url=mini_app_url
-                        ),
-                    )
-                ]
+                [open_quran_button]
             ]
         )
 
@@ -1593,9 +1654,13 @@ async def send_surah_audio(
             e,
         )
 
+        # حتى لو فشل التحميل لأي سبب آخر، أعطِ المستخدم
+        # رابط مباشر بدل رسالة خطأ بدون أي حل.
         await update.message.reply_text(
-            "❌ تعذر تحميل السورة الصوتية حاليًا.\n"
-            "حاول مرة أخرى بعد قليل."
+            f"{caption}\n\n"
+            "❌ تعذر تحميل السورة داخل البوت حاليًا.\n"
+            "يمكنك تحميلها مباشرة من الرابط بالأسفل:",
+            reply_markup=big_file_keyboard(),
         )
 
 
